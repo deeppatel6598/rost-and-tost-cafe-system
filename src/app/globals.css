@@ -1,0 +1,234 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Roast and Toast — design tokens.
+   Two surface modes: ROAST (dark) for guest/ordering screens — a phone at a
+   dim table at 10pm shouldn't be a flashlight, and food reads richer on
+   dark. PAPER (light) for the admin/counter tool — maximum contrast,
+   glanceable from two metres behind a busy counter.
+   ────────────────────────────────────────────────────────────────────────── */
+:root {
+  --font-display: var(--font-cormorant), "Tiempos Headline", Garamond, "Times New Roman", serif;
+  --font-sans: var(--font-inter), -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-mono: var(--font-jetbrains), ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  /* Paper — light surfaces (admin, print, marketing) */
+  --paper-0: #faf9f5;
+  --paper-1: #f5f0e8;
+  --paper-2: #efe9de;
+  --paper-3: #e8e0d2;
+  --hairline: #e6dfd8;
+  --hairline-soft: #ebe6df;
+  --hairline-strong: #d8cfc2;
+
+  /* Roast — dark surfaces (guest app, footers, product chrome) */
+  --roast-950: #100f0e;
+  --roast-900: #181715;
+  --roast-800: #1f1e1b;
+  --roast-700: #252320;
+  --roast-600: #332f2a;
+  --roast-500: #453f38;
+
+  /* Ink */
+  --ink-900: #141413;
+  --ink-800: #252523;
+  --ink-700: #3d3d3a;
+  --ink-500: #6c6a64;
+  --ink-400: #8e8b82;
+  --on-dark: #faf9f5;
+  --on-dark-soft: #a09d96;
+  --on-dark-faint: #726d65;
+  --on-primary: #ffffff;
+
+  /* Brand */
+  --coral-600: #a9583e;
+  --coral-500: #cc785c;
+  --coral-300: #e0a48f;
+  --coral-tint: rgba(204, 120, 92, 0.14);
+  --brass-500: #e8a55a;
+  --amber-600: #d4a017;
+  --teal-500: #5db8a6;
+  --green-500: #5db872;
+  --red-500: #c64545;
+
+  /* Semantic — PAPER mode (default / admin) */
+  --bg: var(--paper-0);
+  --surface: #ffffff;
+  --surface-raised: var(--paper-2);
+  --surface-sunken: var(--paper-1);
+  --border: var(--hairline);
+  --border-strong: var(--hairline-strong);
+  --text: var(--ink-900);
+  --text-body: var(--ink-700);
+  --text-muted: var(--ink-500);
+  --text-faint: var(--ink-400);
+  --accent: var(--coral-500);
+  --accent-active: var(--coral-600);
+  --accent-tint: var(--coral-tint);
+  --accent-on: var(--on-primary);
+  --focus-ring: rgba(204, 120, 92, 0.35);
+
+  /* Order status — distinct hue + lightness + shape, never colour alone */
+  --status-new: #cc785c;
+  --status-new-bg: #fdeee8;
+  --status-new-ink: #8a3f26;
+  --status-preparing: #d4a017;
+  --status-preparing-bg: #fbf1d6;
+  --status-preparing-ink: #7a5c05;
+  --status-served: #2e8b6f;
+  --status-served-bg: #e2f2ec;
+  --status-served-ink: #1c5a48;
+  --status-cancelled: #6c6a64;
+  --status-cancelled-bg: #eeece7;
+  --status-cancelled-ink: #4a4844;
+
+  --success: #2e8b6f;
+  --warning: #d4a017;
+  --danger: #c64545;
+  --danger-bg: #fbeaea;
+
+  /* Veg / non-veg marks — regulatory in India, not decorative. Fixed hues. */
+  --veg: #0f7a34;
+  --nonveg: #9c2b1f;
+  --egg: #d4a017;
+
+  --tap-guest: 44px;
+  --tap-admin: 56px;
+
+  /* Type scale */
+  --display-xl: 64px; --display-xl-lh: 1.05; --display-xl-ls: -1.5px;
+  --display-lg: 48px; --display-lg-lh: 1.1;  --display-lg-ls: -1px;
+  --display-md: 36px; --display-md-lh: 1.15; --display-md-ls: -0.5px;
+  --display-sm: 28px; --display-sm-lh: 1.2;  --display-sm-ls: -0.3px;
+  --display-xs: 22px; --display-xs-lh: 1.25; --display-xs-ls: -0.2px;
+  --title-lg: 22px; --title-md: 18px; --title-sm: 16px;
+  --body-md: 16px; --body-sm: 14px;
+  --caption: 13px; --caption-upper: 12px; --caption-upper-ls: 1.5px;
+  --code: 14px; --button: 14px;
+  --lh-tight: 1.3; --lh-snug: 1.4; --lh-body: 1.55; --lh-loose: 1.6;
+  --w-regular: 400; --w-medium: 500; --w-semibold: 600;
+
+  /* Spacing — 4px base. Guest screens live on 12/16; admin cards on 16/24. */
+  --sp-1: 4px; --sp-2: 8px; --sp-3: 12px; --sp-4: 16px; --sp-5: 24px;
+  --sp-6: 32px; --sp-7: 48px; --sp-8: 64px; --sp-section: 96px;
+  --gutter-guest: 16px;
+  --gutter-admin: 24px;
+  --content-max: 1200px;
+
+  /* Radius + elevation */
+  --r-xs: 4px; --r-sm: 6px; --r-md: 8px; --r-lg: 12px; --r-xl: 16px;
+  --r-2xl: 20px; --r-pill: 9999px; --r-full: 50%;
+  --shadow-1: 0 1px 3px rgba(20, 20, 19, 0.08);
+  --shadow-2: 0 4px 16px rgba(20, 20, 19, 0.1);
+  --shadow-sheet: 0 -12px 40px rgba(8, 7, 6, 0.55);
+  --shadow-toast: 0 8px 28px rgba(8, 7, 6, 0.45);
+  --ring-accent: 0 0 0 3px var(--focus-ring);
+
+  /* Motion */
+  --dur-fast: 120ms; --dur-base: 200ms; --dur-slow: 320ms; --dur-sheet: 280ms;
+  --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
+  --ease-snap: cubic-bezier(0.15, 0.9, 0.1, 1);
+  --ease-in-out: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 1ms; --dur-base: 1ms; --dur-slow: 1ms; --dur-sheet: 1ms;
+  }
+}
+
+/* ROAST mode: put data-surface="roast" on any container (guest app root,
+   a dark band, the footer) and every semantic role re-points. */
+[data-surface="roast"] {
+  --bg: var(--roast-950);
+  --surface: var(--roast-900);
+  --surface-raised: var(--roast-800);
+  --surface-sunken: #0a0909;
+  --border: var(--roast-600);
+  --border-strong: var(--roast-500);
+  --text: var(--on-dark);
+  --text-body: #d9d5cd;
+  --text-muted: var(--on-dark-soft);
+  --text-faint: var(--on-dark-faint);
+  --accent: #e08a6b;
+  --accent-active: var(--coral-500);
+  --accent-tint: rgba(224, 138, 107, 0.16);
+  --focus-ring: rgba(224, 138, 107, 0.4);
+  --status-new-bg: #3a231a;
+  --status-new-ink: #f0c4b1;
+  --status-preparing-bg: #38300f;
+  --status-preparing-ink: #f2dc9c;
+  --status-served-bg: #173229;
+  --status-served-ink: #9fd8c5;
+  --status-cancelled-bg: #26241f;
+  --status-cancelled-ink: #b3aea4;
+  --veg: #3fa863;
+  --nonveg: #d4614f;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--font-sans);
+  font-size: var(--body-md);
+  line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+  text-wrap: pretty;
+}
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-active); text-decoration: underline; }
+[data-surface="roast"] a:hover { color: var(--coral-300); }
+button, input, select, textarea { font: inherit; color: inherit; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+::selection { background: var(--accent-tint); }
+h1, h2, h3, h4, p { margin: 0; }
+img { display: block; max-width: 100%; }
+
+.u-sr-only {
+  position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+  overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+}
+.u-scroll-x { overflow-x: auto; scrollbar-width: none; }
+.u-scroll-x::-webkit-scrollbar { display: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }
+.no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+
+/* Type utility classes, mirroring the design system's t-* scale */
+.t-display-xl, .t-display-lg, .t-display-md, .t-display-sm, .t-display-xs {
+  font-family: var(--font-display); font-weight: var(--w-medium); color: var(--text); margin: 0;
+}
+.t-display-xl { font-size: var(--display-xl); line-height: var(--display-xl-lh); letter-spacing: var(--display-xl-ls); }
+.t-display-lg { font-size: var(--display-lg); line-height: var(--display-lg-lh); letter-spacing: var(--display-lg-ls); }
+.t-display-md { font-size: var(--display-md); line-height: var(--display-md-lh); letter-spacing: var(--display-md-ls); }
+.t-display-sm { font-size: var(--display-sm); line-height: var(--display-sm-lh); letter-spacing: var(--display-sm-ls); }
+.t-display-xs { font-size: var(--display-xs); line-height: var(--display-xs-lh); letter-spacing: var(--display-xs-ls); }
+.t-title-lg { font: var(--w-semibold) var(--title-lg) / var(--lh-tight) var(--font-sans); letter-spacing: -0.2px; margin: 0; }
+.t-title-md { font: var(--w-semibold) var(--title-md) / var(--lh-snug) var(--font-sans); margin: 0; }
+.t-title-sm { font: var(--w-medium) var(--title-sm) / var(--lh-snug) var(--font-sans); margin: 0; }
+.t-body { font: var(--w-regular) var(--body-md) / var(--lh-body) var(--font-sans); margin: 0; }
+.t-body-sm { font: var(--w-regular) var(--body-sm) / var(--lh-body) var(--font-sans); margin: 0; }
+.t-caption { font: var(--w-medium) var(--caption) / var(--lh-snug) var(--font-sans); margin: 0; }
+.t-overline {
+  font: var(--w-semibold) var(--caption-upper) / var(--lh-snug) var(--font-sans);
+  letter-spacing: var(--caption-upper-ls); text-transform: uppercase; margin: 0;
+}
+.t-mono { font: var(--w-medium) var(--code) / var(--lh-snug) var(--font-mono); font-variant-numeric: tabular-nums; }
+.t-num { font-variant-numeric: tabular-nums; }
+
+@keyframes rt-spin { to { transform: rotate(360deg); } }
+@keyframes rt-shimmer { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+@keyframes rt-attention {
+  0%, 100% { box-shadow: 0 0 0 3px var(--status-new-bg); }
+  50% { box-shadow: 0 0 0 7px var(--status-new-bg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}
