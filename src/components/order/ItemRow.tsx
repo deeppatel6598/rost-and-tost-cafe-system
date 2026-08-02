@@ -2,20 +2,18 @@
 
 import { cn } from "@/lib/cn";
 import { formatCurrency } from "@/lib/format";
-import type { CategoryIcon, MenuItem } from "@/lib/types";
+import type { MenuItem } from "@/lib/types";
 import { PlaceholderImage } from "@/components/ui/PlaceholderImage";
 import { VegMark } from "@/components/ui/VegMark";
 import { Button } from "@/components/ui/Button";
 
 export function ItemRow({
   item,
-  categoryIcon,
   quickQty,
   onOpen,
   onQuickAdd,
 }: {
   item: MenuItem;
-  categoryIcon: CategoryIcon;
   quickQty: number;
   onOpen: () => void;
   onQuickAdd: () => void;
@@ -36,7 +34,7 @@ export function ItemRow({
         aria-label={`View ${item.name}${soldOut ? ", sold out" : ""}`}
         className="relative aspect-square w-[76px] shrink-0 overflow-hidden rounded-lg"
       >
-        <PlaceholderImage photoUrl={item.photoUrl} icon={categoryIcon} alt={item.name} />
+        <PlaceholderImage photoUrl={item.photoUrl} itemId={item.id} categoryId={item.categoryId} alt={item.name} />
         {soldOut && (
           <span className="absolute inset-x-0 bottom-0 bg-roast-950/85 py-0.5 text-center text-[10px] font-semibold uppercase tracking-wide text-on-dark-soft">
             Sold out

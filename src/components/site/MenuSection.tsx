@@ -56,7 +56,13 @@ export function MenuSection({ categories, items }: { categories: Category[]; ite
                 className={cn("grid gap-3 rounded-lg border border-border bg-surface p-3", !item.available && "opacity-55")}
               >
                 <div className="relative aspect-square w-full overflow-hidden rounded-md">
-                  <PlaceholderImage photoUrl={item.photoUrl} icon={category?.icon ?? "desserts"} alt={item.name} rounded="rounded-md" />
+                  <PlaceholderImage
+                    photoUrl={item.photoUrl}
+                    itemId={item.id}
+                    categoryId={item.categoryId}
+                    alt={item.name}
+                    rounded="rounded-md"
+                  />
                 </div>
                 <div className="flex items-start gap-3 px-1">
                   <div className="min-w-0 flex-1 grid gap-1.5">

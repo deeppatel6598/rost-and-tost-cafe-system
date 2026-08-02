@@ -8,17 +8,15 @@ import { VegMark } from "@/components/ui/VegMark";
 import { PlaceholderImage } from "@/components/ui/PlaceholderImage";
 import { formatCurrency } from "@/lib/format";
 import { entryUnitPrice, requiredGroupsSatisfied } from "@/lib/cart";
-import type { CategoryIcon, MenuItem } from "@/lib/types";
+import type { MenuItem } from "@/lib/types";
 
 export function ItemSheet({
   item,
-  categoryIcon,
   open,
   onClose,
   onAdd,
 }: {
   item: MenuItem | null;
-  categoryIcon: CategoryIcon;
   open: boolean;
   onClose: () => void;
   onAdd: (qty: number, selectedChoiceIds: { groupId: string; choiceId: string }[], note?: string) => void;
@@ -78,7 +76,13 @@ export function ItemSheet({
     >
       <div className="grid gap-5">
         <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl">
-          <PlaceholderImage photoUrl={item.photoUrl} icon={categoryIcon} alt={item.name} rounded="rounded-xl" />
+          <PlaceholderImage
+            photoUrl={item.photoUrl}
+            itemId={item.id}
+            categoryId={item.categoryId}
+            alt={item.name}
+            rounded="rounded-xl"
+          />
         </div>
 
         <div className="flex items-center gap-3">

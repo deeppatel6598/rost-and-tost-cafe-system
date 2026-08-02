@@ -17,12 +17,9 @@ export function Header({ cafeName }: { cafeName: string }) {
           <a href="#visit" className="t-body-sm text-text-body no-underline hover:text-text">
             Visit
           </a>
-          <Link href="/admin" className="t-body-sm text-text-faint no-underline hover:text-text">
-            Counter
-          </Link>
         </nav>
         <Link
-          href="/order"
+          href="/scan"
           className="ml-auto flex h-11 shrink-0 items-center rounded-md bg-accent px-5 text-[15px] font-semibold text-on-primary no-underline sm:ml-0"
         >
           Scan &amp; order

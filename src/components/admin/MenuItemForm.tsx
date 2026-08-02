@@ -94,7 +94,12 @@ export function MenuItemForm({
     <form onSubmit={handleSubmit} className="grid max-w-2xl gap-6">
       <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
         <div className="relative aspect-square overflow-hidden rounded-lg">
-          <PlaceholderImage photoUrl={photoUrl || undefined} icon={selectedCategory?.icon ?? "desserts"} alt={name || "New item"} />
+          <PlaceholderImage
+            photoUrl={photoUrl || undefined}
+            itemId={initial?.id}
+            categoryId={selectedCategory?.id}
+            alt={name || "New item"}
+          />
         </div>
         <div className="grid gap-3">
           <label className="grid gap-1.5">

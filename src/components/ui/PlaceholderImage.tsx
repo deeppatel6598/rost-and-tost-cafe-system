@@ -1,21 +1,24 @@
 import { cn } from "@/lib/cn";
-import type { CategoryIcon } from "@/lib/types";
-import { CategoryGlyph } from "@/components/ui/CategoryGlyph";
+import { FoodArt, artKeyFor, type FoodArtKey } from "@/components/ui/FoodArt";
 
 /**
- * Stands in for a real product photo. Renders the uploaded photoUrl when one
- * exists; otherwise a branded gradient tile with a category glyph, so every
- * screen still looks finished before real photography is added.
+ * Renders the uploaded photoUrl when one exists; otherwise falls back to the
+ * bundled illustration for that dish, so every screen looks finished before
+ * real photography is shot.
  */
 export function PlaceholderImage({
   photoUrl,
-  icon = "desserts",
+  itemId,
+  categoryId,
+  art,
   alt,
   className,
   rounded = "rounded-lg",
 }: {
   photoUrl?: string;
-  icon?: CategoryIcon;
+  itemId?: string;
+  categoryId?: string;
+  art?: FoodArtKey;
   alt: string;
   className?: string;
   rounded?: string;
@@ -25,18 +28,11 @@ export function PlaceholderImage({
     return <img src={photoUrl} alt={alt} className={cn("h-full w-full object-cover", rounded, className)} />;
   }
 
+  const key = art ?? artKeyFor(itemId ?? "", categoryId ?? "");
+
   return (
-    <div
-      className={cn(
-        "flex h-full w-full items-center justify-center overflow-hidden",
-        "bg-gradient-to-br from-roast-800 via-roast-900 to-roast-950",
-        rounded,
-        className,
-      )}
-      role="img"
-      aria-label={alt}
-    >
-      <CategoryGlyph icon={icon} className="h-[38%] w-[38%] text-coral-300/70" />
+    <div className={cn("h-full w-full overflow-hidden", rounded, className)} role="img" aria-label={alt}>
+      <FoodArt art={key} />
     </div>
   );
 }

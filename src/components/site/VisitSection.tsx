@@ -1,5 +1,5 @@
 import type { CafeSettings } from "@/lib/types";
-import { CategoryGlyph } from "@/components/ui/CategoryGlyph";
+import { FoodArt } from "@/components/ui/FoodArt";
 import { ContactForm } from "@/components/site/ContactForm";
 
 export function VisitSection({ settings }: { settings: CafeSettings }) {
@@ -27,10 +27,8 @@ export function VisitSection({ settings }: { settings: CafeSettings }) {
           </div>
         </div>
         <div className="grid gap-6">
-          <div className="relative aspect-[4/3] min-h-[220px] w-full overflow-hidden rounded-2xl bg-gradient-to-br from-roast-800 via-roast-900 to-roast-950">
-            <div className="flex h-full w-full items-center justify-center">
-              <CategoryGlyph icon="tea" className="h-1/4 w-1/4 text-coral-300/60" />
-            </div>
+          <div className="relative aspect-[4/3] min-h-[220px] w-full overflow-hidden rounded-2xl">
+            <FoodArt art="chai" />
           </div>
           <ContactForm />
         </div>

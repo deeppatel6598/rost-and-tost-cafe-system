@@ -9,7 +9,8 @@ import { formatCurrency } from "@/lib/format";
 import type { Category, MenuItem, Order } from "@/lib/types";
 import { TableBadge } from "@/components/order/TableBadge";
 import { LandingView } from "@/components/order/LandingView";
-import { CategoryCarousel } from "@/components/order/CategoryCarousel";
+import { CategoryRail } from "@/components/order/CategoryRail";
+import { PopularItems } from "@/components/order/PopularItems";
 import { ItemRow } from "@/components/order/ItemRow";
 import { ItemSheet } from "@/components/order/ItemSheet";
 import { CartView } from "@/components/order/CartView";
@@ -19,7 +20,10 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 
-type View = "landing" | "menu" | "cart" | "orders";
+type View = "landing" | "menu" | "category" | "cart" | "orders";
+
+/** Items shown under "Popular right now" on the menu browse screen. */
+const POPULAR_IDS = ["frappe", "margherita", "croissant", "masala-chai", "basque", "toastie"];
 
 export function OrderApp({
   tableNumber,
@@ -135,6 +139,27 @@ function OrderAppInner({
     [menuItems, selectedCategoryId],
   );
 
+  const itemCounts = useMemo(() => {
+    const counts = new Map<string, number>();
+    for (const item of menuItems) {
+      counts.set(item.categoryId, (counts.get(item.categoryId) ?? 0) + 1);
+    }
+    return counts;
+  }, [menuItems]);
+
+  const popularItems = useMemo(() => {
+    const ranked = POPULAR_IDS.map((id) => menuItems.find((m) => m.id === id)).filter(
+      (m): m is MenuItem => !!m && m.available,
+    );
+    // Top up with any other available items if the curated list is thin
+    // (e.g. after the café edits its menu and removes some of these).
+    if (ranked.length >= 4) return ranked;
+    const extras = menuItems.filter((m) => m.available && !ranked.includes(m));
+    return [...ranked, ...extras].slice(0, 6);
+  }, [menuItems]);
+
+  const selectedCategory = categoryById.get(selectedCategoryId);
+
   const cartTotal = useMemo(
     () =>
       cart.entries.reduce((sum, e) => {
@@ -172,7 +197,6 @@ function OrderAppInner({
   }
 
   const sheetItem = sheetItemId ? menuById.get(sheetItemId) ?? null : null;
-  const sheetCategoryIcon = sheetItem ? categoryById.get(sheetItem.categoryId)?.icon ?? "desserts" : "desserts";
 
   if (loading) {
     return (
@@ -210,37 +234,53 @@ function OrderAppInner({
       {view === "landing" && <LandingView tableNumber={tableNumber} cafeName={cafeName} onStart={() => setView("menu")} />}
 
       {view === "menu" && (
-        <div className="flex min-h-0 flex-1 flex-col">
-          <div className="flex-none pt-3">
-            <h1 className="mb-2 px-[var(--gutter-guest)] t-display-xs">What are we making?</h1>
-            <CategoryCarousel
+        <div className="flex-1 overflow-y-auto pb-[120px] pt-4">
+          <h1 className="mb-4 px-[var(--gutter-guest)] t-display-xs">What are we making?</h1>
+          <div className="grid gap-6">
+            <CategoryRail
               categories={categories}
-              selectedId={selectedCategoryId}
-              onSelect={setSelectedCategoryId}
+              itemCounts={itemCounts}
               soldOutIds={soldOutCategoryIds}
+              onSelect={(id) => {
+                setSelectedCategoryId(id);
+                setView("category");
+              }}
             />
+            <PopularItems items={popularItems} onOpen={(id) => setSheetItemId(id)} />
           </div>
-          <div className="flex-1 overflow-y-auto px-[var(--gutter-guest)] pb-[120px]">
-            {visibleItems.length === 0 && (
-              <p className="t-body-sm py-10 text-center text-text-muted">Nothing in this category right now.</p>
-            )}
-            {visibleItems.map((item) => {
-              const category = categoryById.get(item.categoryId);
-              const quickQty = cart.entries
-                .filter((e) => e.menuItemId === item.id && e.selectedChoiceIds.length === 0)
-                .reduce((sum, e) => sum + e.qty, 0);
-              return (
-                <ItemRow
-                  key={item.id}
-                  item={item}
-                  categoryIcon={category?.icon ?? "desserts"}
-                  quickQty={quickQty}
-                  onOpen={() => setSheetItemId(item.id)}
-                  onQuickAdd={() => quickAdd(item)}
-                />
-              );
-            })}
+        </div>
+      )}
+
+      {view === "category" && (
+        <div className="flex-1 overflow-y-auto px-[var(--gutter-guest)] pb-[120px] pt-4">
+          <div className="mb-2 flex items-center gap-3">
+            <button
+              type="button"
+              aria-label="Back to categories"
+              onClick={() => setView("menu")}
+              className="grid h-11 w-11 place-items-center rounded-md border border-border bg-surface-raised text-text"
+            >
+              ←
+            </button>
+            <span className="t-display-xs">{selectedCategory?.name ?? "Menu"}</span>
           </div>
+          {visibleItems.length === 0 && (
+            <p className="t-body-sm py-10 text-center text-text-muted">Nothing in this category right now.</p>
+          )}
+          {visibleItems.map((item) => {
+            const quickQty = cart.entries
+              .filter((e) => e.menuItemId === item.id && e.selectedChoiceIds.length === 0)
+              .reduce((sum, e) => sum + e.qty, 0);
+            return (
+              <ItemRow
+                key={item.id}
+                item={item}
+                quickQty={quickQty}
+                onOpen={() => setSheetItemId(item.id)}
+                onQuickAdd={() => quickAdd(item)}
+              />
+            );
+          })}
         </div>
       )}
 
@@ -278,7 +318,7 @@ function OrderAppInner({
         </div>
       )}
 
-      {view === "menu" && (
+      {(view === "menu" || view === "category") && (
         <div className="sticky bottom-0 z-20 flex-none border-t border-border bg-surface px-[var(--gutter-guest)] py-3">
           <div className="flex items-center gap-4">
             <div className="grid">
@@ -302,7 +342,6 @@ function OrderAppInner({
 
       <ItemSheet
         item={sheetItem}
-        categoryIcon={sheetCategoryIcon}
         open={sheetItemId !== null}
         onClose={() => setSheetItemId(null)}
         onAdd={(qty, selectedChoiceIds, note) => {

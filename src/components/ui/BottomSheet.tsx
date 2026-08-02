@@ -41,7 +41,7 @@ export function BottomSheet({
   return (
     <AnimatePresence>
       {open && (
-        <div className="fixed inset-0 z-50 flex items-end justify-center" role="dialog" aria-modal="true" aria-label={title}>
+        <div className="fixed inset-0 z-[80] flex items-end justify-center" role="dialog" aria-modal="true" aria-label={title}>
           <motion.div
             className="absolute inset-0 bg-black/60"
             initial={{ opacity: 0 }}

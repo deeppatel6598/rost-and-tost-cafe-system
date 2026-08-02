@@ -1,6 +1,11 @@
-import { CategoryGlyph } from "@/components/ui/CategoryGlyph";
+import { FoodArt, type FoodArtKey } from "@/components/ui/FoodArt";
 
-const TILES = ["Counter", "Window seats", "Bake case", "A table at night"];
+const TILES: { label: string; art: FoodArtKey }[] = [
+  { label: "The espresso bar", art: "espresso" },
+  { label: "Fresh from the oven", art: "croissant" },
+  { label: "The bake case", art: "cheesecake" },
+  { label: "Hot plates all day", art: "pizza" },
+];
 
 export function RoomGallery() {
   return (
@@ -8,12 +13,12 @@ export function RoomGallery() {
       <div className="mx-auto grid max-w-[1200px] gap-6 px-[clamp(16px,4vw,40px)] py-[clamp(44px,7vw,88px)]">
         <h2 className="t-display-lg">The room</h2>
         <div className="grid grid-cols-[repeat(auto-fit,minmax(200px,1fr))] gap-4">
-          {TILES.map((label) => (
-            <div key={label} className="relative aspect-[3/4] overflow-hidden rounded-xl bg-gradient-to-br from-roast-800 via-roast-900 to-roast-950">
-              <div className="flex h-full w-full flex-col items-center justify-center gap-3">
-                <CategoryGlyph icon="bakery" className="h-10 w-10 text-coral-300/60" />
-                <span className="t-caption text-on-dark-faint">{label}</span>
-              </div>
+          {TILES.map((tile) => (
+            <div key={tile.label} className="relative aspect-[3/4] overflow-hidden rounded-xl">
+              <FoodArt art={tile.art} />
+              <span className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-roast-950/90 to-transparent px-3 pb-3 pt-8 text-[13px] font-medium text-on-dark">
+                {tile.label}
+              </span>
             </div>
           ))}
         </div>
