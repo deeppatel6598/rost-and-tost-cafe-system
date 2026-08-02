@@ -14,7 +14,7 @@ const HEADLINES: Record<OrderStatus, [string, string]> = {
 
 const STEPS: OrderStatus[] = ["received", "preparing", "served"];
 
-export function PlacedView({ order, onAddMore }: { order: Order; onAddMore: () => void }) {
+export function PlacedView({ order, onAddMore }: { order: Order; onAddMore?: () => void }) {
   const [headline, body] = HEADLINES[order.status];
   const stepIndex = STEPS.indexOf(order.status);
 
@@ -67,11 +67,14 @@ export function PlacedView({ order, onAddMore }: { order: Order; onAddMore: () =
         </div>
       </div>
 
-      <span className="t-body-sm text-center text-text-faint">Later rounds join the same table bill. Pay once, at the counter.</span>
-
-      <Button size="hero" fullWidth onClick={onAddMore}>
-        Add more items
-      </Button>
+      {onAddMore && (
+        <>
+          <span className="t-body-sm text-center text-text-faint">Later rounds join the same table bill. Pay once, at the counter.</span>
+          <Button size="hero" fullWidth onClick={onAddMore}>
+            Add more items
+          </Button>
+        </>
+      )}
     </div>
   );
 }

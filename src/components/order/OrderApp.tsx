@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import Link from "next/link";
 import { api } from "@/lib/api-client";
 import { CartProvider, useCart } from "@/context/CartContext";
@@ -13,12 +13,13 @@ import { CategoryCarousel } from "@/components/order/CategoryCarousel";
 import { ItemRow } from "@/components/order/ItemRow";
 import { ItemSheet } from "@/components/order/ItemSheet";
 import { CartView } from "@/components/order/CartView";
-import { PlacedView } from "@/components/order/PlacedView";
+import { MyOrdersButton } from "@/components/order/MyOrdersButton";
+import { MyOrdersView } from "@/components/order/MyOrdersView";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 
-type View = "landing" | "menu" | "cart" | "placed";
+type View = "landing" | "menu" | "cart" | "orders";
 
 export function OrderApp({
   tableNumber,
@@ -55,12 +56,10 @@ function OrderAppInner({
   const [loadError, setLoadError] = useState<string | null>(null);
   const [selectedCategoryId, setSelectedCategoryId] = useState<string>("");
   const [sheetItemId, setSheetItemId] = useState<string | null>(null);
-  const [collapsed, setCollapsed] = useState(false);
   const [orderNote, setOrderNote] = useState("");
-  const [placedOrder, setPlacedOrder] = useState<Order | null>(null);
+  const [myOrders, setMyOrders] = useState<Order[]>([]);
   const [submitting, setSubmitting] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
-  const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,25 +91,32 @@ function OrderAppInner({
     };
   }, []);
 
+  // Polls every order placed this session so the "My order" corner button and
+  // the orders screen stay live, whether or not the guest is looking at them
+  // right now. Stops once every order has reached a final state.
   useEffect(() => {
-    if (view !== "placed" || !placedOrder) return;
+    const openIds = myOrders.filter((o) => o.status === "received" || o.status === "preparing").map((o) => o.id);
+    if (openIds.length === 0) return;
     let cancelled = false;
     const poll = setInterval(async () => {
       try {
-        const { order } = await api.order(placedOrder.id);
-        if (!cancelled) setPlacedOrder(order);
+        const results = await Promise.all(openIds.map((id) => api.order(id).catch(() => null)));
+        if (cancelled) return;
+        setMyOrders((prev) =>
+          prev.map((o) => results.find((r) => r?.order.id === o.id)?.order ?? o),
+        );
       } catch {
-        /* keep last known status on transient network errors */
+        /* keep last known statuses on transient network errors */
       }
     }, 4000);
     return () => {
       cancelled = true;
       clearInterval(poll);
     };
-    // Poll keyed on the order id, not the whole object — including `placedOrder`
-    // itself would restart this interval on every status update it produces.
+    // Keyed on the open order ids, not the full array — the array changes on
+    // every status update this effect itself produces, which would restart it.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [view, placedOrder?.id]);
+  }, [myOrders.map((o) => o.id + o.status).join(",")]);
 
   const menuById = useMemo(() => new Map(menuItems.map((m) => [m.id, m])), [menuItems]);
   const categoryById = useMemo(() => new Map(categories.map((c) => [c.id, c])), [categories]);
@@ -139,11 +145,6 @@ function OrderAppInner({
   );
   const cartCount = cart.entries.reduce((sum, e) => sum + e.qty, 0);
 
-  const handleScroll = useCallback(() => {
-    if (!listRef.current) return;
-    setCollapsed(listRef.current.scrollTop > 12);
-  }, []);
-
   function quickAdd(item: MenuItem) {
     cart.addEntry(item.id, 1, []);
     showToast(`Added ${item.name}`);
@@ -159,10 +160,10 @@ function OrderAppInner({
         cart.entries.map((e) => ({ menuItemId: e.menuItemId, qty: e.qty, selectedChoiceIds: e.selectedChoiceIds, lineNote: e.lineNote })),
         orderNote.trim() || undefined,
       );
-      setPlacedOrder(order);
+      setMyOrders((prev) => [...prev, order]);
       cart.clear();
       setOrderNote("");
-      setView("placed");
+      setView("orders");
     } catch (err) {
       setSubmitError(err instanceof Error ? err.message : "Could not place your order.");
     } finally {
@@ -198,9 +199,12 @@ function OrderAppInner({
       <header className="sticky top-0 z-30 flex flex-none items-center gap-3 border-b border-border bg-bg px-[var(--gutter-guest)] py-3.5">
         <TableBadge tableNumber={tableNumber} />
         <span className="t-display-xs">{cafeName}</span>
-        <Link href="/" className="ml-auto text-[13px] font-medium text-text-faint">
-          Site
-        </Link>
+        <div className="ml-auto flex items-center gap-3">
+          <MyOrdersButton orders={myOrders} onClick={() => setView("orders")} />
+          <Link href="/" className="text-[13px] font-medium text-text-faint">
+            Site
+          </Link>
+        </div>
       </header>
 
       {view === "landing" && <LandingView tableNumber={tableNumber} cafeName={cafeName} onStart={() => setView("menu")} />}
@@ -214,10 +218,9 @@ function OrderAppInner({
               selectedId={selectedCategoryId}
               onSelect={setSelectedCategoryId}
               soldOutIds={soldOutCategoryIds}
-              collapsed={collapsed}
             />
           </div>
-          <div ref={listRef} onScroll={handleScroll} className="flex-1 overflow-y-auto px-[var(--gutter-guest)] pb-[120px]">
+          <div className="flex-1 overflow-y-auto px-[var(--gutter-guest)] pb-[120px]">
             {visibleItems.length === 0 && (
               <p className="t-body-sm py-10 text-center text-text-muted">Nothing in this category right now.</p>
             )}
@@ -269,9 +272,9 @@ function OrderAppInner({
         </div>
       )}
 
-      {view === "placed" && placedOrder && (
+      {view === "orders" && myOrders.length > 0 && (
         <div className="flex-1 overflow-y-auto px-[var(--gutter-guest)] pb-[40px] pt-5">
-          <PlacedView order={placedOrder} onAddMore={() => setView("menu")} />
+          <MyOrdersView orders={myOrders} onBack={() => setView("menu")} onAddMore={() => setView("menu")} />
         </div>
       )}
 
