@@ -18,7 +18,7 @@ const STEPS = [
   },
 ];
 
-export function OrderingSteps() {
+export function OrderingSteps({ demoTablePath }: { demoTablePath: string }) {
   return (
     <section id="ordering" data-surface="roast" className="bg-roast-950 text-on-dark">
       <div className="mx-auto grid max-w-[1200px] gap-10 px-[clamp(16px,4vw,40px)] py-[clamp(44px,7vw,88px)] sm:gap-14">
@@ -42,7 +42,7 @@ export function OrderingSteps() {
           <span className="flex-1 text-[16px] text-text-body" style={{ minWidth: 260 }}>
             Want to see the ordering screens as a guest would? Open the live prototype.
           </span>
-          <Link href="/order/1" className="flex h-14 items-center rounded-md bg-accent px-7 text-base font-semibold text-on-primary no-underline">
+          <Link href={demoTablePath} className="flex h-14 items-center rounded-md bg-accent px-7 text-base font-semibold text-on-primary no-underline">
             Open the prototype
           </Link>
         </div>

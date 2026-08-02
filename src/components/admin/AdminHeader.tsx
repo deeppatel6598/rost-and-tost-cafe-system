@@ -19,6 +19,16 @@ export function AdminHeader() {
   const router = useRouter();
   const [clock, setClock] = useState(formatClock());
   const [liveCount, setLiveCount] = useState(0);
+  const [guestViewPath, setGuestViewPath] = useState("/order");
+
+  useEffect(() => {
+    fetch("/api/tables/link/1")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => d?.path && setGuestViewPath(d.path))
+      .catch(() => {
+        /* fall back to the plain scan-instructions page */
+      });
+  }, []);
 
   useEffect(() => {
     const clockTimer = setInterval(() => setClock(formatClock()), 15000);
@@ -73,7 +83,7 @@ export function AdminHeader() {
       <span className="t-mono ml-auto flex h-11 items-center gap-2 rounded-pill border border-border bg-surface-sunken px-4 text-[15px] text-text-muted">
         <span aria-hidden="true">●</span> {liveCount} open · {clock}
       </span>
-      <Link href="/order/1" className="text-[15px] font-medium">
+      <Link href={guestViewPath} className="text-[15px] font-medium">
         Guest view
       </Link>
       <button type="button" onClick={logout} className="text-[15px] font-medium text-text-muted hover:text-text">

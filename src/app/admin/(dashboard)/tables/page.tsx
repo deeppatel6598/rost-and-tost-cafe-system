@@ -67,9 +67,9 @@ export default function TablesPage() {
         </form>
       </div>
       <p className="t-body-sm text-text-muted">
-        Each table's QR code points guests straight to its ordering screen. Print and place one at every table —
-        download individual codes below, or set <code>NEXT_PUBLIC_SITE_URL</code> to your live domain first so the
-        codes point at the right place.
+        Each table's QR code points guests straight to its ordering screen on whichever domain you're viewing this
+        page from. Print and place one at every table — download individual codes below. If you ever move to a
+        custom domain, set <code>NEXT_PUBLIC_SITE_URL</code> to pin the codes to it explicitly.
       </p>
       <div className="grid grid-cols-[repeat(auto-fill,minmax(160px,1fr))] gap-4">
         {tables.map((table) => {

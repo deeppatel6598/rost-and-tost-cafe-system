@@ -122,6 +122,7 @@ export interface CartLineInput {
 
 export interface CreateOrderInput {
   tableNumber: number;
+  tableToken: string;
   lines: CartLineInput[];
   note?: string;
 }

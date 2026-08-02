@@ -20,15 +20,31 @@ import { useToast } from "@/components/ui/Toast";
 
 type View = "landing" | "menu" | "cart" | "placed";
 
-export function OrderApp({ tableNumber, cafeName }: { tableNumber: number; cafeName: string }) {
+export function OrderApp({
+  tableNumber,
+  tableToken,
+  cafeName,
+}: {
+  tableNumber: number;
+  tableToken: string;
+  cafeName: string;
+}) {
   return (
     <CartProvider>
-      <OrderAppInner tableNumber={tableNumber} cafeName={cafeName} />
+      <OrderAppInner tableNumber={tableNumber} tableToken={tableToken} cafeName={cafeName} />
     </CartProvider>
   );
 }
 
-function OrderAppInner({ tableNumber, cafeName }: { tableNumber: number; cafeName: string }) {
+function OrderAppInner({
+  tableNumber,
+  tableToken,
+  cafeName,
+}: {
+  tableNumber: number;
+  tableToken: string;
+  cafeName: string;
+}) {
   const { showToast } = useToast();
   const cart = useCart();
 
@@ -139,6 +155,7 @@ function OrderAppInner({ tableNumber, cafeName }: { tableNumber: number; cafeNam
     try {
       const { order } = await api.createOrder(
         tableNumber,
+        tableToken,
         cart.entries.map((e) => ({ menuItemId: e.menuItemId, qty: e.qty, selectedChoiceIds: e.selectedChoiceIds, lineNote: e.lineNote })),
         orderNote.trim() || undefined,
       );

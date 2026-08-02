@@ -1,6 +1,7 @@
 import { getSettings } from "@/lib/store/settings";
 import { listCategories } from "@/lib/store/categories";
 import { listMenuItems } from "@/lib/store/menu";
+import { getTableOrderPath } from "@/lib/qrcode";
 import { Header } from "@/components/site/Header";
 import { Hero } from "@/components/site/Hero";
 import { HoursStrip } from "@/components/site/HoursStrip";
@@ -23,7 +24,7 @@ export default function HomePage() {
       <Hero settings={settings} />
       <HoursStrip settings={settings} />
       <MenuSection categories={categories} items={items} />
-      <OrderingSteps />
+      <OrderingSteps demoTablePath={getTableOrderPath(1)} />
       <RoomGallery />
       <VisitSection settings={settings} />
       <Footer settings={settings} />

@@ -17,9 +17,9 @@ export const api = {
   menu: () => request<{ items: MenuItem[] }>("/api/menu"),
   tables: () => request<{ tables: Table[] }>("/api/tables"),
   order: (id: string) => request<{ order: Order }>(`/api/orders/${id}`),
-  createOrder: (tableNumber: number, lines: CartLineInput[], note?: string) =>
+  createOrder: (tableNumber: number, tableToken: string, lines: CartLineInput[], note?: string) =>
     request<{ order: Order }>("/api/orders", {
       method: "POST",
-      body: JSON.stringify({ tableNumber, lines, note }),
+      body: JSON.stringify({ tableNumber, tableToken, lines, note }),
     }),
 };
