@@ -17,8 +17,13 @@ export function Footer({ settings }: { settings: CafeSettings }) {
         </div>
       </div>
       <div className="border-t border-roast-600">
-        <div className="mx-auto max-w-[1200px] px-[clamp(16px,4vw,40px)] py-[18px] text-[13px] text-on-dark-faint">
-          © {new Date().getFullYear()} {settings.name}. We take orders {settings.hours}.
+        <div className="mx-auto flex max-w-[1200px] flex-wrap items-center justify-between gap-2 px-[clamp(16px,4vw,40px)] py-[18px] text-[13px] text-on-dark-faint">
+          <span>
+            © {new Date().getFullYear()} {settings.name}. We take orders {settings.hours}.
+          </span>
+          <span>
+            Created by <span className="font-medium text-text-body">@deeppatel</span>
+          </span>
         </div>
       </div>
     </footer>
