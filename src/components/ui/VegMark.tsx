@@ -1,22 +1,25 @@
 import { cn } from "@/lib/cn";
-import type { VegMark as VegMarkType } from "@/lib/types";
+import type { FoodType } from "@/lib/types";
 
-const LABELS: Record<VegMarkType, string> = {
+const LABELS: Record<FoodType, string> = {
   veg: "Vegetarian",
-  nonveg: "Non-vegetarian",
+  non_veg: "Non-vegetarian",
+  jain: "Jain",
   egg: "Contains egg",
 };
 
-const COLORS: Record<VegMarkType, string> = {
+const COLORS: Record<FoodType, string> = {
   veg: "var(--veg)",
-  nonveg: "var(--nonveg)",
+  non_veg: "var(--nonveg)",
+  jain: "var(--jain)",
   egg: "var(--egg)",
 };
 
 /**
- * The FSSAI-style veg/non-veg mark, mandatory on Indian food menus: a square
- * outline with a filled dot (veg) or filled triangle (non-veg). Egg gets its
- * own amber square + circle so eggetarian guests can tell it apart from meat.
+ * The FSSAI-style food marker, mandatory on Indian menus: a square outline
+ * with a filled glyph inside. Green square + dot for veg, red square +
+ * triangle for non-veg, and distinct treatments for egg and Jain so the four
+ * are never told apart by colour alone.
  */
 export function VegMark({
   type,
@@ -24,7 +27,7 @@ export function VegMark({
   size = 16,
   className,
 }: {
-  type: VegMarkType;
+  type: FoodType;
   withLabel?: boolean;
   size?: number;
   className?: string;
@@ -38,10 +41,11 @@ export function VegMark({
       title={LABELS[type]}
     >
       <svg width={size} height={size} viewBox="0 0 18 18" aria-hidden="true" className="shrink-0">
-        <rect x="1" y="1" width="16" height="16" rx="2" fill="none" stroke={color} strokeWidth="1.6" />
+        <rect x="1" y="1" width="16" height="16" rx="2" fill="none" stroke={color} strokeWidth="1.8" />
         {type === "veg" && <circle cx="9" cy="9" r="4.2" fill={color} />}
-        {type === "nonveg" && <path d="M9 4 L14.2 13.2 L3.8 13.2 Z" fill={color} />}
-        {type === "egg" && <ellipse cx="9" cy="9.5" rx="4" ry="4.6" fill={color} />}
+        {type === "non_veg" && <path d="M9 4.2 L14.2 13.4 L3.8 13.4 Z" fill={color} />}
+        {type === "egg" && <ellipse cx="9" cy="9.4" rx="3.9" ry="4.6" fill={color} />}
+        {type === "jain" && <path d="M9 3.8 L14.2 9 L9 14.2 L3.8 9 Z" fill={color} />}
       </svg>
       {withLabel && <span className="t-caption text-text-muted">{LABELS[type]}</span>}
     </span>

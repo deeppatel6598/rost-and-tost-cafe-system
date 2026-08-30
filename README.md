@@ -1,137 +1,157 @@
-# Roast and Toast — QR Café Ordering System
+# SK University Canteen — Dine-In Ordering
 
-One codebase, three surfaces:
+QR table ordering for the Sakarchand Patel University canteen, across four
+independent stalls: **Jay Bhavani**, **Tea Post**, **La Pinos Pizza** and
+**Annapurna Tiffin**.
 
-- **Public website** (`/`) — the café's face: hero, menu, how table ordering
-  works, hours, location, and a contact form.
-- **Customer ordering app** (`/order/[tableNumber]`) — what a guest sees after
-  scanning the QR code on their table: browse the menu, add items, send the
-  order to the kitchen, and watch it move from *Received → Preparing →
-  Served*.
-- **Admin / Counter panel** (`/admin`) — the staff tool: a live orders board,
-  a table grid, a menu manager with an instant sold-out toggle, order
-  history, and café settings.
+The stalls are separate businesses sharing a room and a set of table QR
+codes. They have their own menus, staff, money and UPI accounts, and nothing
+is shared between them anywhere in this system.
 
-All three talk to the same order and menu data in real time — an order
-placed at table 7 shows up on the Counter board within seconds, and marking
-it "Preparing" updates the guest's screen on the same loop.
+## The one architectural decision to understand
 
-## Stack
+**A cart belongs to exactly one stall.** A student cannot mix Jay Bhavani and
+La Pinos in one cart. After placing an order they tap "Order from another
+stall", which keeps the same table session and produces a *second* order with
+its own token.
 
-Next.js 14 (App Router) + TypeScript + Tailwind CSS + Framer Motion. No
-external UI kit — the design tokens (colours, type, spacing, radius) live in
-`src/app/globals.css` and are wired into `tailwind.config.ts`, so `bg-accent`,
-`t-display-lg`, etc. all resolve to the café's actual palette.
+This is deliberate: each stall settles its own money, and combining them in
+one payment would mean collecting on another business's behalf, which needs a
+licensed payment aggregator. There is no combined cart and no combined
+checkout.
 
-## Running it locally
+The data is nevertheless modelled as `order → sub_orders` even though there is
+always exactly one sub-order today. That is what lets a future release add
+multi-stall orders without a schema rewrite.
+
+## Surfaces
+
+| Route | Who | What |
+|---|---|---|
+| `/t/<qr_token>` | student | What the table sticker encodes. Validates the signed token, seats the session, redirects to stall selection. |
+| `/order` | student | Stall selection with open / closed / paused state. |
+| `/order/<stall>` | student | That stall's menu, cart, customisation sheet. |
+| `/order/<stall>/checkout` | student | Cash or UPI choice, instructions, optional phone. |
+| `/status/<public_token>` | student | Token number, live status, UPI payment panel, 90s cancel. |
+| `/orders` | student | Every order this browser has placed. |
+| `/scan` | student | Camera QR scanner, for entering without a direct link. |
+| `/admin` | stall staff | Live order queue. |
+| `/admin/menu` | stall staff | Menu management, one-tap sold-out toggle. |
+| `/admin/today` | stall owner | Sales, split by cash/UPI, top items, hour chart. |
+| `/admin/stall` | stall owner | Open/close, hours, cash/UPI, payout details. |
+| `/admin/tables` | any staff | Printable table QR codes. |
+| `/admin/super` | supervisor | Read-mostly view across all four stalls. |
+
+## Running it
 
 ```bash
 npm install
-cp .env.example .env.local   # then edit as needed
+cp .env.example .env.local     # set AUTH_SECRET
 npm run dev
 ```
 
-Open `http://localhost:3000` for the website, `http://localhost:3000/order/7`
-to try the guest ordering flow for table 7, and `http://localhost:3000/admin`
-for the counter panel (demo login: `admin` / `roastandtoast123`, both
-overridable via env vars — change them before you go live).
+Then sign in at `/admin` as a stall (`9000000031` / `stall123` for La Pinos)
+and open **Tables** to get a working table link — the guest flow starts from a
+signed QR, so `/order` on its own will send you to the scanner.
 
-## About the data — no database yet, on purpose
+Demo logins are printed on the sign-in screen. **Change them before going
+live** (`SUPER_ADMIN_PASSWORD`, `STALL_PASSWORD`, or create real accounts as
+the supervisor and deactivate the seeds).
 
-You asked to ship this live first and connect a real database only once a
-client signs off. So right now all data — menu, categories, tables, orders,
-café settings, contact messages — lives in a single in-memory store:
-`src/lib/store/db.ts`, seeded from `src/data/seed.ts`.
+## Payments
 
-That means:
+There is **no payment gateway**. Money moves directly between the student and
+the stall's own UPI account:
 
-- Every screen is fully functional today: place an order as a guest, watch
-  it appear on the Counter board, advance its status, toggle an item
-  sold-out, edit café hours — all of it persists **for as long as the server
-  process stays running**.
-- Data resets when the server restarts or redeploys, and if you deploy to a
-  platform that spins up multiple serverless instances, each instance gets
-  its own copy (state won't be shared across them). For an initial live demo
-  on a single always-on Node process (e.g. `next start` on a small VPS, or a
-  single-instance deployment), this behaves correctly and orders/menu
-  changes stay in sync across the site, the guest app, and the counter.
+- **Cash** — the order goes to the kitchen immediately, `payment_status`
+  stays `PENDING`, and is confirmed when the order is marked collected.
+- **UPI** — the order is created but **cannot leave `PLACED`** until a member
+  of stall staff confirms the money arrived in their own UPI app. The student
+  tapping "I have paid" only sets `AWAITING_CONFIRMATION`; it is a claim, and
+  the system never treats it as anything else. Unverified claims sit in their
+  own "Awaiting payment" section, apart from the cooking queue.
 
-### Connecting a real database later
+The UPI link is a `upi://pay?...` intent that opens GPay/PhonePe/Paytm with
+the amount and token pre-filled. That deep link is the primary path, not the
+QR code — the student is ordering *on* their phone, and a phone cannot scan a
+QR shown on its own screen. The QR is collapsed below as a fallback for
+paying from a second device.
 
-Nothing outside `src/lib/store/*.ts` talks to the in-memory object directly —
-every API route and page goes through the functions in that folder
-(`listMenuItems`, `createOrder`, `advanceOrderStatus`, etc.). To add
-persistence:
-
-1. Pick a database (Postgres via Prisma/Supabase is a natural fit for this
-   shape of data).
-2. Reimplement the functions in `src/lib/store/*.ts` against that database,
-   keeping the same function names and signatures.
-3. Delete `src/lib/store/db.ts` and `src/data/seed.ts` once they're no longer
-   imported anywhere.
-
-No API route, page, or component needs to change.
-
-## QR codes for tables
-
-Each table's QR code is generated on the fly at `/api/tables/qr/:number` and
-points at `/order/:number` on whichever domain the request actually arrived
-on (read from the `host` / `x-forwarded-host` headers) — so it works
-correctly on a Netlify preview URL, a custom domain, or localhost with no
-configuration needed. Set `NEXT_PUBLIC_SITE_URL` only if you want to pin the
-codes to one specific domain regardless of where the request came from.
-The Tables tab in the admin panel has a "Download QR" link per table.
-
-**The links are signed.** `/order/7` on its own does nothing — the real
-link is `/order/7?t=<signed token>`, where the token is an HMAC of the table
-number keyed by `AUTH_SECRET`. This stops a guest from just editing the
-number in their address bar and ordering as a table they're not sitting at:
-the token is checked both when the ordering page loads and again on the
-server when the order is submitted, so bypassing the page and calling the
-API directly doesn't work either. Only the printed/downloaded QR code (or
-the admin's "Guest view" link) carries a valid token — generating one
-requires being signed in as staff (`/api/tables/qr/:number` is
-admin-only).
-
-## Environment variables
-
-See `.env.example`:
-
-- `NEXT_PUBLIC_SITE_URL` — your live site URL (used to build QR links).
-- `ADMIN_USERNAME` / `ADMIN_PASSWORD` — Counter login credentials.
-- `AUTH_SECRET` — random string used to sign the admin session cookie
-  (`openssl rand -base64 32`).
-
-## Project layout
+## Order state machine
 
 ```
-src/
-  app/
-    page.tsx                 Public website
-    order/[tableId]/         Customer QR ordering app
-    admin/                   Counter panel (login-protected via middleware.ts)
-    api/                     REST-ish API routes backing all three surfaces
-  components/
-    site/                    Website sections
-    order/                   Guest ordering screens (incl. the category carousel)
-    admin/                   Counter panel screens
-    ui/                      Shared primitives (Button, VegMark, BottomSheet, …)
-  lib/
-    store/                   In-memory "repository" layer — swap this for a real DB
-    types.ts, cart.ts, auth.ts, qrcode.ts, format.ts, api-client.ts
-  data/seed.ts                Starting menu, categories, tables, café details
+PLACED → ACCEPTED → PREPARING → READY → COMPLETED
+   ↓         ↓
+CANCELLED  CANCELLED
 ```
 
-## Notes on the guest category carousel
+`COMPLETED` requires `payment_status = CONFIRMED` for both methods. Cancelling
+an order that was already paid sets `REFUND_DUE`, which surfaces in the stall's
+"Needs attention" list and in the supervisor's problem list until marked
+`REFUNDED`.
 
-The menu screen's category selector shows three categories at a time (one
-centred, two peeking at the edges), drag-to-snap, infinite wrap, and
-collapses into a compact strip once the guest scrolls into the item list.
-Discoverability of the categories not currently visible is solved with
-position dots under the carousel (the smallest, most familiar signal for a
-5–10 item set) rather than a peek-count badge or an expand-to-grid control —
-see the comment above `CategoryCarousel` in
-`src/components/order/CategoryCarousel.tsx` for the reasoning. It respects
-`prefers-reduced-motion` (instant snap, no scale/opacity animation) and is
-operable by keyboard (arrow keys move & select) with a live region
-announcing "*Category name*, category *n* of *total*, selected."
+## Security
+
+Verified end to end by `npm run build` plus the acceptance harness (51 checks,
+all passing) covering:
+
+1. **Server-side pricing.** The client sends item, variant and addon **ids and
+   quantities only**. Every rupee is recomputed from the database; a client
+   total that disagrees is rejected with 409. Injected `basePrice`/`lineTotal`
+   fields are ignored outright.
+2. **HMAC table tokens.** Stickers encode a signed token, never `?table=12`.
+   Forged tokens land on a "we couldn't read that code" page.
+3. **Random `public_token`** for status URLs, so nobody can enumerate orders.
+4. **Idempotency key** per checkout attempt — a double-tap or an offline retry
+   replays the first order rather than creating a second.
+5. **Sold-out race** re-checked inside the same synchronous block as the write.
+6. **Rate limiting** per table session and per IP, both env-tunable.
+7. **Tenancy at the data layer.** Every stall-scoped query goes through one
+   choke point that pins staff to their own `stall_id`. Stall A staff get 403
+   on stall B's queue and 404 on stall B's menu items.
+8. **Short staff sessions** (4h) — these phones get left on counters.
+9. **Audit log** on every payment confirmation, refund, cancellation, price
+   change and UPI VPA change.
+10. **Phone numbers masked** in application logs.
+11. Counter staff cannot change the payout VPA; only the stall owner can, and
+    it takes a deliberate confirmation step.
+
+## Data — no database yet
+
+Everything lives in a process-local in-memory store (`src/lib/store/`), seeded
+from `src/data/seed.ts`. Two consequences:
+
+- On a **single always-on Node server** (`npm run build && npm start`) all four
+  stalls and every guest share one consistent view. This is the supported way
+  to pilot it.
+- On **multi-instance serverless hosting** (Netlify/Vercel Functions) each
+  instance keeps its own copy, so an order placed against one instance may not
+  appear on another. Do not run the real canteen this way.
+
+### Moving to a real database
+
+Nothing outside `src/lib/store/*.ts` touches the store directly. To add
+persistence, reimplement those functions against your database, keeping the
+same signatures. Two places need genuine transactions, and both are marked
+with comments in `src/lib/store/orders.ts`:
+
+- the idempotency lookup, and
+- the sold-out check, which should become a conditional
+  `UPDATE ... WHERE is_available = true` rather than read-then-write.
+
+Rate limiting (`src/lib/rate-limit.ts`) also becomes a shared counter.
+
+## Not built (out of scope, by agreement)
+
+Delivery to hostels/departments, guest accounts, payment-gateway integration,
+multi-stall single checkout, loyalty, coupons and ratings. The schema does not
+block delivery being added later — `fulfillment_type` and the
+`order → sub_orders` split are both already in place.
+
+## Note on the fourth stall
+
+`Annapurna Tiffin` is a **placeholder** — the real fourth stall's name wasn't
+known at build time. Renaming it is a one-field edit in `src/data/seed.ts`
+(change `name` and `upiPayeeName`, leave `id` alone since the menu rows
+reference it). Every stall's UPI VPA in the seed is a placeholder too and must
+be replaced with the real one before taking a single payment.

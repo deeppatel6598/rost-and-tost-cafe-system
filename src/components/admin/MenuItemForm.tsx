@@ -1,125 +1,128 @@
 "use client";
 
 import { useState } from "react";
-import { generateId } from "@/lib/format";
-import type { Category, ItemOptionGroup, MenuItem, VegMark as VegMarkType } from "@/lib/types";
+import { cn } from "@/lib/cn";
+import type { FoodType, ItemVariant, MenuCategory, MenuItemView } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
-import { PlaceholderImage } from "@/components/ui/PlaceholderImage";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
+import { FoodArt, artKeyFor, asArtKey } from "@/components/ui/FoodArt";
 
-export type MenuItemFormValues = Omit<MenuItem, "id" | "createdAt" | "updatedAt">;
+export interface MenuItemFormValues {
+  name: string;
+  description: string;
+  basePrice: number;
+  categoryId: string;
+  foodType: FoodType;
+  imageUrl?: string;
+  isAvailable: boolean;
+  variants: Omit<ItemVariant, "itemId">[];
+  addonGroups: {
+    id: string;
+    name: string;
+    minSelect: number;
+    maxSelect: number;
+    isRequired: boolean;
+    sortOrder: number;
+    addons: { id: string; name: string; priceDelta: number; isAvailable: boolean }[];
+  }[];
+}
 
-const VEG_OPTIONS: { value: VegMarkType; label: string }[] = [
-  { value: "veg", label: "Vegetarian" },
-  { value: "egg", label: "Contains egg" },
-  { value: "nonveg", label: "Non-vegetarian" },
+const FOOD_TYPES: { value: FoodType; label: string }[] = [
+  { value: "veg", label: "Veg" },
+  { value: "jain", label: "Jain" },
+  { value: "egg", label: "Egg" },
+  { value: "non_veg", label: "Non-veg" },
 ];
+
+let tempId = 0;
+const nextTempId = (prefix: string) => `${prefix}_new_${++tempId}`;
 
 export function MenuItemForm({
   initial,
   categories,
   submitLabel,
-  onSubmit,
   submitting,
+  onSubmit,
 }: {
-  initial?: MenuItem;
-  categories: Category[];
+  initial?: MenuItemView;
+  categories: MenuCategory[];
   submitLabel: string;
-  onSubmit: (values: MenuItemFormValues) => void;
   submitting: boolean;
+  onSubmit: (values: MenuItemFormValues) => void;
 }) {
   const [name, setName] = useState(initial?.name ?? "");
   const [description, setDescription] = useState(initial?.description ?? "");
-  const [price, setPrice] = useState(initial?.price?.toString() ?? "");
+  const [basePrice, setBasePrice] = useState(initial ? String(initial.basePrice) : "");
   const [categoryId, setCategoryId] = useState(initial?.categoryId ?? categories[0]?.id ?? "");
-  const [veg, setVeg] = useState<VegMarkType>(initial?.veg ?? "veg");
-  const [photoUrl, setPhotoUrl] = useState(initial?.photoUrl ?? "");
-  const [badge, setBadge] = useState(initial?.badge ?? "");
-  const [available, setAvailable] = useState(initial?.available ?? true);
-  const [groups, setGroups] = useState<ItemOptionGroup[]>(initial?.optionGroups ?? []);
-
-  const selectedCategory = categories.find((c) => c.id === categoryId);
-
-  function addGroup() {
-    setGroups((prev) => [
-      ...prev,
-      { id: generateId("group"), name: "", type: "single", required: false, choices: [{ id: generateId("choice"), label: "", priceDelta: 0 }] },
-    ]);
-  }
-
-  function updateGroup(id: string, patch: Partial<ItemOptionGroup>) {
-    setGroups((prev) => prev.map((g) => (g.id === id ? { ...g, ...patch } : g)));
-  }
-
-  function removeGroup(id: string) {
-    setGroups((prev) => prev.filter((g) => g.id !== id));
-  }
-
-  function addChoice(groupId: string) {
-    setGroups((prev) =>
-      prev.map((g) => (g.id === groupId ? { ...g, choices: [...g.choices, { id: generateId("choice"), label: "", priceDelta: 0 }] } : g)),
-    );
-  }
-
-  function updateChoice(groupId: string, choiceId: string, patch: Partial<ItemOptionGroup["choices"][number]>) {
-    setGroups((prev) =>
-      prev.map((g) =>
-        g.id === groupId ? { ...g, choices: g.choices.map((c) => (c.id === choiceId ? { ...c, ...patch } : c)) } : g,
-      ),
-    );
-  }
-
-  function removeChoice(groupId: string, choiceId: string) {
-    setGroups((prev) => prev.map((g) => (g.id === groupId ? { ...g, choices: g.choices.filter((c) => c.id !== choiceId) } : g)));
-  }
+  const [foodType, setFoodType] = useState<FoodType>(initial?.foodType ?? "veg");
+  const [imageUrl, setImageUrl] = useState(initial?.imageUrl ?? "");
+  const [isAvailable, setIsAvailable] = useState(initial?.isAvailable ?? true);
+  const [variants, setVariants] = useState<MenuItemFormValues["variants"]>(
+    initial?.variants.map((v) => ({ ...v })) ?? [],
+  );
+  const [groups, setGroups] = useState<MenuItemFormValues["addonGroups"]>(
+    initial?.addonGroups.map((g) => ({
+      id: g.id,
+      name: g.name,
+      minSelect: g.minSelect,
+      maxSelect: g.maxSelect,
+      isRequired: g.isRequired,
+      sortOrder: g.sortOrder,
+      addons: g.addons.map((a) => ({ id: a.id, name: a.name, priceDelta: a.priceDelta, isAvailable: a.isAvailable })),
+    })) ?? [],
+  );
 
   function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     onSubmit({
       name: name.trim(),
       description: description.trim(),
-      price: Number(price) || 0,
+      basePrice: Number(basePrice) || 0,
       categoryId,
-      veg,
-      photoUrl: photoUrl.trim() || undefined,
-      badge: badge.trim() || undefined,
-      available,
-      optionGroups: groups
+      foodType,
+      imageUrl: imageUrl.trim() || undefined,
+      isAvailable,
+      variants: variants.filter((v) => v.name.trim()),
+      addonGroups: groups
         .filter((g) => g.name.trim())
-        .map((g) => ({ ...g, choices: g.choices.filter((c) => c.label.trim()) })),
+        .map((g) => ({ ...g, addons: g.addons.filter((a) => a.name.trim()) })),
     });
   }
 
   return (
     <form onSubmit={handleSubmit} className="grid max-w-2xl gap-6">
-      <div className="grid gap-4 sm:grid-cols-[140px_1fr]">
-        <div className="relative aspect-square overflow-hidden rounded-lg">
-          <PlaceholderImage
-            photoUrl={photoUrl || undefined}
-            itemId={initial?.id}
-            categoryId={selectedCategory?.id}
-            alt={name || "New item"}
+      <div className="grid gap-4 sm:grid-cols-[120px_1fr]">
+        <div className="aspect-square overflow-hidden rounded-lg">
+          {imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img src={imageUrl} alt="" className="h-full w-full object-cover" />
+          ) : (
+            <FoodArt art={initial?.art ? asArtKey(initial.art) : artKeyFor(initial?.id ?? "", categoryId)} />
+          )}
+        </div>
+        <label className="grid content-start gap-1.5">
+          <span className="t-overline text-text-faint">Photo URL</span>
+          <input
+            value={imageUrl}
+            onChange={(e) => setImageUrl(e.target.value)}
+            placeholder="https://…"
+            className="h-11 rounded-md border border-border bg-surface px-3"
           />
-        </div>
-        <div className="grid gap-3">
-          <label className="grid gap-1.5">
-            <span className="t-overline text-text-faint">Photo URL</span>
-            <input
-              value={photoUrl}
-              onChange={(e) => setPhotoUrl(e.target.value)}
-              placeholder="https://…"
-              className="h-11 rounded-md border border-border bg-surface px-3"
-            />
-            <span className="t-caption text-text-faint">
-              No file storage yet — paste an image URL for now. Direct upload plugs in once a database is connected.
-            </span>
-          </label>
-        </div>
+          <span className="t-caption text-text-faint">
+            Paste an image link for now. Direct upload arrives with file storage.
+          </span>
+        </label>
       </div>
 
       <label className="grid gap-1.5">
         <span className="t-overline text-text-faint">Name</span>
-        <input required value={name} onChange={(e) => setName(e.target.value)} className="h-11 rounded-md border border-border bg-surface px-3" />
+        <input
+          required
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={80}
+          className="h-12 rounded-md border border-border bg-surface px-3"
+        />
       </label>
 
       <label className="grid gap-1.5">
@@ -128,25 +131,30 @@ export function MenuItemForm({
           value={description}
           onChange={(e) => setDescription(e.target.value)}
           rows={2}
+          maxLength={200}
           className="resize-none rounded-md border border-border bg-surface px-3 py-2"
         />
       </label>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         <label className="grid gap-1.5">
           <span className="t-overline text-text-faint">Price (₹)</span>
           <input
             required
             type="number"
             min={0}
-            value={price}
-            onChange={(e) => setPrice(e.target.value)}
-            className="h-11 rounded-md border border-border bg-surface px-3"
+            value={basePrice}
+            onChange={(e) => setBasePrice(e.target.value)}
+            className="h-12 rounded-md border border-border bg-surface px-3"
           />
         </label>
         <label className="grid gap-1.5">
           <span className="t-overline text-text-faint">Category</span>
-          <select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} className="h-11 rounded-md border border-border bg-surface px-3">
+          <select
+            value={categoryId}
+            onChange={(e) => setCategoryId(e.target.value)}
+            className="h-12 rounded-md border border-border bg-surface px-3"
+          >
             {categories.map((c) => (
               <option key={c.id} value={c.id}>
                 {c.name}
@@ -154,21 +162,26 @@ export function MenuItemForm({
             ))}
           </select>
         </label>
-        <label className="grid gap-1.5">
-          <span className="t-overline text-text-faint">Badge (optional)</span>
-          <input value={badge} onChange={(e) => setBadge(e.target.value)} placeholder="e.g. Favourite" className="h-11 rounded-md border border-border bg-surface px-3" />
-        </label>
       </div>
 
       <div className="grid gap-1.5">
-        <span className="t-overline text-text-faint">Veg / non-veg mark</span>
+        <span className="t-overline text-text-faint">Food type</span>
         <div className="flex flex-wrap gap-2">
-          {VEG_OPTIONS.map((opt) => (
+          {FOOD_TYPES.map((opt) => (
             <label
               key={opt.value}
-              className="flex cursor-pointer items-center gap-2 rounded-md border border-border px-3 py-2 has-[:checked]:border-accent has-[:checked]:bg-accent-tint"
+              className={cn(
+                "flex cursor-pointer items-center gap-2 rounded-md border px-3 py-2.5",
+                foodType === opt.value ? "border-accent bg-accent-tint" : "border-border",
+              )}
             >
-              <input type="radio" name="veg" checked={veg === opt.value} onChange={() => setVeg(opt.value)} />
+              <input
+                type="radio"
+                name="foodType"
+                checked={foodType === opt.value}
+                onChange={() => setFoodType(opt.value)}
+                className="h-4 w-4 accent-[var(--accent)]"
+              />
               <span className="t-body-sm">{opt.label}</span>
             </label>
           ))}
@@ -177,70 +190,219 @@ export function MenuItemForm({
 
       <div className="flex items-center justify-between rounded-md border border-border px-4 py-3">
         <span className="t-title-sm">Available on the menu</span>
-        <ToggleSwitch checked={available} onChange={setAvailable} label="Available" />
+        <ToggleSwitch checked={isAvailable} onChange={setIsAvailable} label="Available" />
       </div>
 
-      <div className="grid gap-3">
+      {/* Variants — size, half/full */}
+      <section className="grid gap-3">
         <div className="flex items-center gap-3">
-          <span className="t-title-md">Options &amp; add-ons</span>
-          <Button type="button" size="sm" variant="secondary" onClick={addGroup}>
+          <span className="t-title-md">Sizes &amp; variants</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() =>
+              setVariants((prev) => [
+                ...prev,
+                { id: nextTempId("var"), name: "", priceDelta: 0, isAvailable: true, sortOrder: prev.length },
+              ])
+            }
+          >
+            Add size
+          </Button>
+        </div>
+        {variants.length === 0 && (
+          <p className="t-body-sm text-text-muted">None — this item is sold one way only.</p>
+        )}
+        {variants.map((variant, index) => (
+          <div key={variant.id} className="flex items-center gap-2">
+            <input
+              value={variant.name}
+              onChange={(e) =>
+                setVariants((prev) => prev.map((v, i) => (i === index ? { ...v, name: e.target.value } : v)))
+              }
+              placeholder='e.g. 10" Medium'
+              className="h-11 flex-1 rounded-md border border-border bg-surface px-3"
+            />
+            <input
+              type="number"
+              value={variant.priceDelta}
+              onChange={(e) =>
+                setVariants((prev) =>
+                  prev.map((v, i) => (i === index ? { ...v, priceDelta: Number(e.target.value) || 0 } : v)),
+                )
+              }
+              placeholder="+₹"
+              className="h-11 w-24 rounded-md border border-border bg-surface px-3"
+            />
+            <button
+              type="button"
+              onClick={() => setVariants((prev) => prev.filter((_, i) => i !== index))}
+              className="px-2 text-text-faint hover:text-danger"
+              aria-label={`Remove ${variant.name || "variant"}`}
+            >
+              ✕
+            </button>
+          </div>
+        ))}
+      </section>
+
+      {/* Add-on groups — extra toppings, spice level */}
+      <section className="grid gap-3">
+        <div className="flex items-center gap-3">
+          <span className="t-title-md">Add-ons</span>
+          <Button
+            type="button"
+            size="sm"
+            variant="secondary"
+            onClick={() =>
+              setGroups((prev) => [
+                ...prev,
+                {
+                  id: nextTempId("grp"),
+                  name: "",
+                  minSelect: 0,
+                  maxSelect: 3,
+                  isRequired: false,
+                  sortOrder: prev.length,
+                  addons: [{ id: nextTempId("add"), name: "", priceDelta: 0, isAvailable: true }],
+                },
+              ])
+            }
+          >
             Add group
           </Button>
         </div>
-        {groups.length === 0 && <p className="t-body-sm text-text-muted">None — this item has no size or add-on choices.</p>}
-        {groups.map((group) => (
+        {groups.length === 0 && <p className="t-body-sm text-text-muted">None.</p>}
+
+        {groups.map((group, gi) => (
           <div key={group.id} className="grid gap-3 rounded-lg border border-border p-4">
-            <div className="flex flex-wrap items-center gap-3">
+            <div className="flex flex-wrap items-center gap-2">
               <input
                 value={group.name}
-                onChange={(e) => updateGroup(group.id, { name: e.target.value })}
-                placeholder="Group name — e.g. Size"
-                className="h-10 flex-1 rounded-md border border-border bg-surface px-3"
+                onChange={(e) =>
+                  setGroups((prev) => prev.map((g, i) => (i === gi ? { ...g, name: e.target.value } : g)))
+                }
+                placeholder="Group name — e.g. Extra toppings"
+                className="h-11 flex-1 rounded-md border border-border bg-surface px-3"
               />
-              <select
-                value={group.type}
-                onChange={(e) => updateGroup(group.id, { type: e.target.value as "single" | "multi" })}
-                className="h-10 rounded-md border border-border bg-surface px-2"
-              >
-                <option value="single">Pick one</option>
-                <option value="multi">Pick any</option>
-              </select>
-              <label className="flex items-center gap-1.5 t-body-sm">
-                <input type="checkbox" checked={!!group.required} onChange={(e) => updateGroup(group.id, { required: e.target.checked })} />
-                Required
+              <label className="flex items-center gap-1.5 text-[13px]">
+                max
+                <input
+                  type="number"
+                  min={1}
+                  value={group.maxSelect}
+                  onChange={(e) =>
+                    setGroups((prev) =>
+                      prev.map((g, i) => (i === gi ? { ...g, maxSelect: Number(e.target.value) || 1 } : g)),
+                    )
+                  }
+                  className="h-11 w-16 rounded-md border border-border bg-surface px-2"
+                />
               </label>
-              <button type="button" onClick={() => removeGroup(group.id)} className="t-body-sm text-danger">
-                Remove group
+              <label className="flex items-center gap-1.5 text-[13px]">
+                <input
+                  type="checkbox"
+                  checked={group.isRequired}
+                  onChange={(e) =>
+                    setGroups((prev) =>
+                      prev.map((g, i) => (i === gi ? { ...g, isRequired: e.target.checked } : g)),
+                    )
+                  }
+                  className="h-4 w-4 accent-[var(--accent)]"
+                />
+                required
+              </label>
+              <button
+                type="button"
+                onClick={() => setGroups((prev) => prev.filter((_, i) => i !== gi))}
+                className="t-body-sm text-danger"
+              >
+                Remove
               </button>
             </div>
+
             <div className="grid gap-2">
-              {group.choices.map((choice) => (
-                <div key={choice.id} className="flex items-center gap-2">
+              {group.addons.map((addon, ai) => (
+                <div key={addon.id} className="flex items-center gap-2">
                   <input
-                    value={choice.label}
-                    onChange={(e) => updateChoice(group.id, choice.id, { label: e.target.value })}
-                    placeholder="Choice — e.g. Large"
-                    className="h-10 flex-1 rounded-md border border-border bg-surface px-3"
+                    value={addon.name}
+                    onChange={(e) =>
+                      setGroups((prev) =>
+                        prev.map((g, i) =>
+                          i === gi
+                            ? {
+                                ...g,
+                                addons: g.addons.map((a, j) => (j === ai ? { ...a, name: e.target.value } : a)),
+                              }
+                            : g,
+                        ),
+                      )
+                    }
+                    placeholder="Choice — e.g. Extra cheese"
+                    className="h-11 flex-1 rounded-md border border-border bg-surface px-3"
                   />
                   <input
                     type="number"
-                    value={choice.priceDelta}
-                    onChange={(e) => updateChoice(group.id, choice.id, { priceDelta: Number(e.target.value) || 0 })}
+                    value={addon.priceDelta}
+                    onChange={(e) =>
+                      setGroups((prev) =>
+                        prev.map((g, i) =>
+                          i === gi
+                            ? {
+                                ...g,
+                                addons: g.addons.map((a, j) =>
+                                  j === ai ? { ...a, priceDelta: Number(e.target.value) || 0 } : a,
+                                ),
+                              }
+                            : g,
+                        ),
+                      )
+                    }
                     placeholder="+₹"
-                    className="h-10 w-24 rounded-md border border-border bg-surface px-3"
+                    className="h-11 w-24 rounded-md border border-border bg-surface px-3"
                   />
-                  <button type="button" onClick={() => removeChoice(group.id, choice.id)} className="t-caption text-text-faint hover:text-danger">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      setGroups((prev) =>
+                        prev.map((g, i) => (i === gi ? { ...g, addons: g.addons.filter((_, j) => j !== ai) } : g)),
+                      )
+                    }
+                    className="px-2 text-text-faint hover:text-danger"
+                    aria-label="Remove choice"
+                  >
                     ✕
                   </button>
                 </div>
               ))}
-              <Button type="button" size="sm" variant="ghost" onClick={() => addChoice(group.id)} className="justify-self-start">
+              <Button
+                type="button"
+                size="sm"
+                variant="ghost"
+                className="justify-self-start"
+                onClick={() =>
+                  setGroups((prev) =>
+                    prev.map((g, i) =>
+                      i === gi
+                        ? {
+                            ...g,
+                            addons: [
+                              ...g.addons,
+                              { id: nextTempId("add"), name: "", priceDelta: 0, isAvailable: true },
+                            ],
+                          }
+                        : g,
+                    ),
+                  )
+                }
+              >
                 + Add choice
               </Button>
             </div>
           </div>
         ))}
-      </div>
+      </section>
 
       <Button type="submit" size="admin" disabled={submitting} className="justify-self-start">
         {submitting ? "Saving…" : submitLabel}

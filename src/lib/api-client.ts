@@ -1,25 +1,23 @@
-import type { CartLineInput, Category, MenuItem, Order, Table } from "@/lib/types";
+/** Thin fetch wrapper that surfaces the server's error message. */
+export class ApiError extends Error {
+  constructor(
+    message: string,
+    readonly status: number,
+    readonly code?: string,
+  ) {
+    super(message);
+  }
+}
 
-async function request<T>(url: string, init?: RequestInit): Promise<T> {
+export async function apiRequest<T>(url: string, init?: RequestInit): Promise<T> {
   const res = await fetch(url, {
     ...init,
     headers: { "Content-Type": "application/json", ...(init?.headers || {}) },
   });
-  const data = await res.json().catch(() => ({}));
+
+  const data = await res.json().catch(() => ({}) as any);
   if (!res.ok) {
-    throw new Error(data?.error || `Request to ${url} failed with ${res.status}`);
+    throw new ApiError(data?.error || `Request failed (${res.status})`, res.status, data?.code);
   }
   return data as T;
 }
-
-export const api = {
-  categories: () => request<{ categories: Category[] }>("/api/categories"),
-  menu: () => request<{ items: MenuItem[] }>("/api/menu"),
-  tables: () => request<{ tables: Table[] }>("/api/tables"),
-  order: (id: string) => request<{ order: Order }>(`/api/orders/${id}`),
-  createOrder: (tableNumber: number, tableToken: string, lines: CartLineInput[], note?: string) =>
-    request<{ order: Order }>("/api/orders", {
-      method: "POST",
-      body: JSON.stringify({ tableNumber, tableToken, lines, note }),
-    }),
-};

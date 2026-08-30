@@ -1,23 +1,29 @@
 import { createHmac, timingSafeEqual } from "crypto";
 
 /**
- * Table QR links are signed so a guest can't just edit the number in the URL
- * bar and place an order under a table they're not sitting at. The token is
- * a truncated HMAC of the table number, keyed by AUTH_SECRET — deterministic
- * (so the same table always gets the same code, fine to print once) but
- * unguessable without the secret. Verified both when the ordering page
- * loads AND again server-side when the order is created, so bypassing the
- * UI and calling the API directly doesn't work either.
+ * Dining-table QR tokens.
+ *
+ * The QR sticker on a table encodes /t/<qr_token>, never /t/12 and never
+ * ?table=12. A bare table number would let anyone order food to any table in
+ * the canteen, and would let someone print a counterfeit sticker pointing at
+ * a table that isn't theirs. The token is an HMAC of the table number keyed
+ * by AUTH_SECRET, so only the server (which holds the secret) can mint a
+ * valid one, and it is verified server-side on every entry.
+ *
+ * The token is deterministic for a given table so a sticker printed once
+ * stays valid. Rotating AUTH_SECRET invalidates every printed QR code — that
+ * is the intended lever if stickers are ever compromised.
  */
+
 function getSecret(): string {
   return process.env.AUTH_SECRET || "dev-only-insecure-secret-change-me";
 }
 
-const TOKEN_LENGTH = 16;
+const TOKEN_LENGTH = 20;
 
 export function signTableToken(tableNumber: number): string {
   return createHmac("sha256", getSecret())
-    .update(`table:${tableNumber}`)
+    .update(`sk-canteen:table:${tableNumber}`)
     .digest("hex")
     .slice(0, TOKEN_LENGTH);
 }

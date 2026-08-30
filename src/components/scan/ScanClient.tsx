@@ -4,16 +4,18 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import jsQR from "jsqr";
-import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 
 type Phase = "starting" | "scanning" | "denied" | "unsupported" | "found";
 
 /**
  * Opens the device camera and watches for a table QR code. Only accepts codes
- * that point at an /order/<n> path on this same site — a QR from anywhere
- * else is ignored rather than followed, so pointing the scanner at a random
- * code can't navigate a guest off to an attacker's URL.
+ * that point at a /t/<token> path on this same site — a QR from anywhere else
+ * is ignored rather than followed, so pointing the scanner at a random sticker
+ * on a noticeboard can't navigate a student off to someone else's URL.
+ *
+ * The token itself is still verified server-side at /t/<token>; matching the
+ * shape here only stops the camera from following junk.
  */
 export function ScanClient() {
   const router = useRouter();
@@ -24,7 +26,6 @@ export function ScanClient() {
   const handledRef = useRef(false);
 
   const [phase, setPhase] = useState<Phase>("starting");
-  const [manualTable, setManualTable] = useState("");
 
   const stop = useCallback(() => {
     if (rafRef.current !== null) cancelAnimationFrame(rafRef.current);
@@ -42,7 +43,7 @@ export function ScanClient() {
         return;
       }
       if (target.origin !== window.location.origin) return;
-      if (!/^\/order\/\d+$/.test(target.pathname)) return;
+      if (!/^\/t\/[A-Za-z0-9_-]{10,64}$/.test(target.pathname)) return;
 
       handledRef.current = true;
       setPhase("found");
@@ -110,12 +111,6 @@ export function ScanClient() {
     };
   }, [handleDecoded, stop]);
 
-  function submitManual(e: React.FormEvent) {
-    e.preventDefault();
-    const n = Number(manualTable);
-    if (Number.isInteger(n) && n > 0) router.push(`/order/${n}`);
-  }
-
   return (
     <div data-surface="roast" className="min-h-screen bg-[#0a0909]">
       <div className="mx-auto flex min-h-screen w-full max-w-[430px] flex-col border-x border-roast-600 bg-bg text-text">
@@ -149,8 +144,8 @@ export function ScanClient() {
                 </span>
                 <span className="t-body-sm text-text-muted">
                   {phase === "denied"
-                    ? "Allow camera access in your browser settings, or enter your table number below."
-                    : "This browser can't open the camera. Enter your table number below instead."}
+                    ? "Allow camera access in your browser settings, then try again."
+                    : "This browser can't open the camera. Please ask a member of staff for help."}
                 </span>
               </div>
             )}
@@ -166,29 +161,13 @@ export function ScanClient() {
             Point your camera at the QR code printed on your table. The menu opens on its own — no app, no sign-up.
           </p>
 
-          <form onSubmit={submitManual} className="mt-auto grid gap-2 rounded-lg border border-border bg-surface p-4">
-            <label htmlFor="manual-table" className="t-overline text-text-faint">
-              Can't scan? Enter your table number
-            </label>
-            <div className="flex gap-2">
-              <input
-                id="manual-table"
-                type="number"
-                min={1}
-                inputMode="numeric"
-                value={manualTable}
-                onChange={(e) => setManualTable(e.target.value)}
-                placeholder="e.g. 7"
-                className="h-11 flex-1 rounded-md border border-border bg-bg px-3"
-              />
-              <Button type="submit" size="guest" disabled={!manualTable}>
-                Go
-              </Button>
-            </div>
-            <p className="t-caption text-text-faint">
-              A team member at the counter can confirm your table number if it isn't printed on the code.
+          <div className="mt-auto grid gap-2 rounded-lg border border-border bg-surface p-4">
+            <span className="t-overline text-text-faint">Can&apos;t scan the code?</span>
+            <p className="t-body-sm text-text-muted">
+              Table codes are signed, so a table number typed by hand won&apos;t open the menu. Ask a member of
+              canteen staff — they can bring you a fresh code or take your order at the counter.
             </p>
-          </form>
+          </div>
         </div>
       </div>
     </div>

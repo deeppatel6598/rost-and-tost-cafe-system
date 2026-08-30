@@ -3,71 +3,105 @@
 import { useEffect, useState } from "react";
 import { cn } from "@/lib/cn";
 import { formatCurrency, formatElapsed } from "@/lib/format";
-import type { Order } from "@/lib/types";
-import { StatusChip } from "@/components/ui/StatusChip";
+import type { SubOrderView } from "@/lib/types";
+import { StatusChip, PaymentBadge } from "@/components/ui/StatusChip";
 import { Button } from "@/components/ui/Button";
 
-const NEXT_LABEL: Record<Order["status"], string | null> = {
-  received: "Start preparing",
-  preparing: "Mark served",
-  served: null,
-  cancelled: null,
+const NEXT_LABEL: Record<SubOrderView["status"], string | null> = {
+  PLACED: "Accept",
+  ACCEPTED: "Start cooking",
+  PREPARING: "Mark ready",
+  READY: "Collected",
+  COMPLETED: null,
+  CANCELLED: null,
 };
 
 export function OrderCard({
   order,
+  flash,
+  onOpen,
   onAdvance,
-  onOpenDetail,
+  onMarkRefunded,
 }: {
-  order: Order;
+  order: SubOrderView;
+  flash: boolean;
+  onOpen: () => void;
   onAdvance: () => void;
-  onOpenDetail: () => void;
+  onMarkRefunded?: () => void;
 }) {
-  const [, forceTick] = useState(0);
+  // Re-render on a timer so "3 min" doesn't sit stale on a screen that's been
+  // open all lunchtime.
+  const [, tick] = useState(0);
   useEffect(() => {
-    const t = setInterval(() => forceTick((n) => n + 1), 15000);
+    const t = setInterval(() => tick((n) => n + 1), 15000);
     return () => clearInterval(t);
   }, []);
 
   const nextLabel = NEXT_LABEL[order.status];
-  const isNew = order.status === "received";
+  const blockedOnPayment =
+    order.paymentMethod === "upi" && order.status === "PLACED" && order.paymentStatus !== "CONFIRMED";
+  const refundDue = order.paymentStatus === "REFUND_DUE";
 
   return (
     <article
       className={cn(
-        "grid gap-3 rounded-lg border bg-surface p-4",
-        isNew ? "border-status-new shadow-2" : "border-border",
+        "grid gap-3 rounded-xl border bg-surface p-4",
+        order.status === "PLACED" ? "border-status-new" : "border-border",
+        flash && "animate-rt-ring",
       )}
-      style={isNew ? { boxShadow: "0 0 0 3px var(--status-new-bg)" } : undefined}
     >
-      <button type="button" onClick={onOpenDetail} className="grid gap-3 text-left">
-        <div className="flex items-center gap-3">
-          <span className="t-mono text-2xl font-semibold">T{order.tableNumber}</span>
-          <StatusChip status={order.status} />
-          <span className="t-caption ml-auto text-text-faint">{formatElapsed(order.placedAt)}</span>
+      <button type="button" onClick={onOpen} className="grid gap-2 text-left">
+        <div className="flex items-baseline gap-2">
+          <span className="font-mono text-2xl font-bold">{order.tokenNumber}</span>
+          <span className="t-body-sm font-semibold text-text-muted">T{order.tableNumber}</span>
+          <span className="t-caption ml-auto text-text-faint">{formatElapsed(order.createdAt)}</span>
         </div>
-        <div className="grid gap-1">
-          {order.lines.map((line) => (
-            <div key={line.id} className="flex gap-2 text-[15px] text-text-body">
-              <span className="t-mono text-text-muted">{line.qty}×</span>
-              <span className="flex-1 truncate">{line.name}</span>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <StatusChip status={order.status} />
+          <PaymentBadge method={order.paymentMethod} status={order.paymentStatus} />
+        </div>
+
+        <div className="grid gap-1 border-t border-border pt-2">
+          {order.items.map((line) => (
+            <div key={line.id} className="flex gap-2 text-[15px]">
+              <span className="t-mono font-semibold text-text-muted">{line.quantity}×</span>
+              <span className="min-w-0 flex-1">
+                <span className="block truncate font-medium">{line.itemNameSnapshot}</span>
+                {(line.variantNameSnapshot || line.addonsSnapshot.length > 0) && (
+                  <span className="block truncate text-xs text-text-muted">
+                    {[line.variantNameSnapshot, ...line.addonsSnapshot.map((a) => a.name)]
+                      .filter(Boolean)
+                      .join(", ")}
+                  </span>
+                )}
+              </span>
             </div>
           ))}
         </div>
-        {order.note && (
-          <p className="t-body-sm rounded-md bg-accent-tint px-3 py-2 text-accent-active">Note: {order.note}</p>
+
+        {order.specialInstructions && (
+          <p className="rounded-md border border-status-preparing bg-status-preparing-bg px-2.5 py-1.5 text-[13px] font-semibold text-status-preparing-ink">
+            {order.specialInstructions}
+          </p>
         )}
-        <div className="flex items-center justify-between t-caption text-text-faint">
-          <span>Order #{order.id} · Round {order.round}</span>
-          <span className="t-mono text-text">{formatCurrency(order.total)}</span>
-        </div>
+
+        <span className="t-mono text-right text-[15px] font-semibold">{formatCurrency(order.total)}</span>
       </button>
 
-      {nextLabel && (
+      {refundDue && onMarkRefunded ? (
+        <Button size="admin" variant="danger" fullWidth onClick={onMarkRefunded}>
+          Mark refund sent
+        </Button>
+      ) : blockedOnPayment ? (
+        <p className="rounded-md bg-surface-raised px-3 py-2 text-center text-[13px] font-medium text-text-muted">
+          Waiting for payment — confirm it before cooking
+        </p>
+      ) : nextLabel ? (
         <Button size="admin" fullWidth onClick={onAdvance}>
           {nextLabel}
         </Button>
-      )}
+      ) : null}
     </article>
   );
 }

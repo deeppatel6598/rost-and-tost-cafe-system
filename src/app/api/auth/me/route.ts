@@ -1,8 +1,20 @@
 import { NextResponse } from "next/server";
-import { getAdminSession } from "@/lib/api-auth";
+import { getStaffSession } from "@/lib/api-auth";
+import { getStall } from "@/lib/store/stalls";
 
 export async function GET() {
-  const session = await getAdminSession();
+  const session = await getStaffSession();
   if (!session) return NextResponse.json({ authenticated: false }, { status: 401 });
-  return NextResponse.json({ authenticated: true, username: session.username });
+
+  const stall = session.stallId ? getStall(session.stallId) : null;
+  return NextResponse.json({
+    authenticated: true,
+    staff: {
+      id: session.staffId,
+      name: session.name,
+      role: session.role,
+      stallId: session.stallId,
+      stallName: stall?.name ?? null,
+    },
+  });
 }

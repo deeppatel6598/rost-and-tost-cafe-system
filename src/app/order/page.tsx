@@ -1,14 +1,28 @@
-import { getSettings } from "@/lib/store/settings";
+import { redirect } from "next/navigation";
+import { getTableSession } from "@/lib/api-auth";
+import { listStallViews } from "@/lib/store/stalls";
+import { StallPicker } from "@/components/order/StallPicker";
 
-export default function OrderEntryPage() {
-  const settings = getSettings();
+export const dynamic = "force-dynamic";
+export const metadata = { title: "Choose a stall" };
+
+export default async function StallSelectionPage() {
+  const session = await getTableSession();
+  // No table session means they didn't come through a QR code.
+  if (!session) redirect("/scan");
+
+  const stalls = listStallViews();
+
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-4 px-[var(--gutter-guest)] py-10 text-center">
-      <span className="t-display-md">Scan the code on your table</span>
-      <p className="t-body max-w-[34ch] text-text-muted">
-        Every table at {settings.name} has its own QR code. Scan it with your phone's camera and the menu for your
-        table opens automatically — no app, no link to type in.
-      </p>
-    </div>
+    <StallPicker
+      tableNumber={session.tableNumber}
+      stalls={stalls.map((s) => ({
+        id: s.id,
+        name: s.name,
+        description: s.description,
+        art: s.art,
+        availability: s.availability,
+      }))}
+    />
   );
 }

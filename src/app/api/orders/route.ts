@@ -1,49 +1,118 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireAdmin } from "@/lib/api-auth";
-import { createOrder, listOrders, OrderValidationError } from "@/lib/store/orders";
-import { verifyTableToken } from "@/lib/table-token";
-import type { CreateOrderInput } from "@/lib/types";
+import { requireTableSession } from "@/lib/api-auth";
+import { maskPhone } from "@/lib/format";
+import { clientIp, pruneRateLimits, rateLimit } from "@/lib/rate-limit";
+import { createOrder, OrderError } from "@/lib/store/orders";
+import { buildUpiLink } from "@/lib/upi";
+import { getStall } from "@/lib/store/stalls";
+import type { CartLineInput, CreateOrderInput } from "@/lib/types";
 
-export async function GET(request: NextRequest) {
-  const unauthorized = await requireAdmin();
-  if (unauthorized) return unauthorized;
+export const dynamic = "force-dynamic";
 
-  const table = request.nextUrl.searchParams.get("table");
-  let orders = listOrders();
-  if (table) orders = orders.filter((o) => o.tableNumber === Number(table));
-  return NextResponse.json({ orders });
+/**
+ * Placing an order costs the student nothing, so it needs a ceiling.
+ *
+ * The per-session limit is the meaningful one: it is scoped to a single table
+ * and is what stops one person spamming tokens. The per-IP limit is a blunt
+ * backstop and is deliberately generous, because campus wifi NATs the whole
+ * canteen behind a handful of addresses — set it too low and the lunch rush
+ * throttles itself. Both are env-tunable so the numbers can be adjusted
+ * against real traffic without a redeploy of logic.
+ */
+const PER_SESSION_LIMIT = Number(process.env.ORDER_RATE_LIMIT_PER_SESSION ?? 8);
+const PER_IP_LIMIT = Number(process.env.ORDER_RATE_LIMIT_PER_IP ?? 200);
+const WINDOW_MS = 60_000;
+
+function normaliseLines(raw: unknown): CartLineInput[] {
+  if (!Array.isArray(raw)) return [];
+  return raw.slice(0, 40).map((line) => {
+    const l = line as Partial<CartLineInput>;
+    return {
+      itemId: String(l.itemId ?? ""),
+      variantId: l.variantId ? String(l.variantId) : undefined,
+      addonIds: Array.isArray(l.addonIds) ? l.addonIds.slice(0, 10).map(String) : [],
+      quantity: Number(l.quantity ?? 0),
+    };
+  });
 }
 
 export async function POST(request: NextRequest) {
+  const scope = await requireTableSession();
+  if (!scope.ok) return scope.response;
+  const { session } = scope;
+
+  pruneRateLimits();
+  const ip = clientIp(request.headers);
+  const perSession = rateLimit(`order:table:${session.tableId}`, PER_SESSION_LIMIT, WINDOW_MS);
+  const perIp = rateLimit(`order:ip:${ip}`, PER_IP_LIMIT, WINDOW_MS);
+  if (!perSession.allowed || !perIp.allowed) {
+    const retry = Math.max(perSession.retryAfterSeconds, perIp.retryAfterSeconds);
+    return NextResponse.json(
+      { error: "Too many orders too quickly. Please wait a moment.", code: "rate_limited" },
+      { status: 429, headers: { "Retry-After": String(retry) } },
+    );
+  }
+
+  // The idempotency key is generated once per checkout attempt on the client,
+  // so a double-tap or an offline retry of a request that actually landed
+  // replays the first order instead of creating a second one.
+  const idempotencyKey = request.headers.get("idempotency-key");
+  if (!idempotencyKey || idempotencyKey.length < 8 || idempotencyKey.length > 100) {
+    return NextResponse.json(
+      { error: "Missing idempotency key.", code: "missing_idempotency_key" },
+      { status: 400 },
+    );
+  }
+
   let body: CreateOrderInput;
   try {
     body = await request.json();
   } catch {
-    return NextResponse.json({ error: "Invalid request body." }, { status: 400 });
+    return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  if (!body.tableNumber || !Array.isArray(body.lines)) {
-    return NextResponse.json({ error: "tableNumber and lines are required." }, { status: 400 });
+  if (!body.stallId || (body.paymentMethod !== "cash" && body.paymentMethod !== "upi")) {
+    return NextResponse.json({ error: "Stall and payment method are required." }, { status: 400 });
   }
 
-  // The UI already gates this, but a client can call the API directly, so
-  // the table's signed link token is re-checked here — this is the actual
-  // security boundary that stops someone from editing the table number in
-  // the URL (or the request body) and ordering as a table they're not at.
-  if (!verifyTableToken(body.tableNumber, body.tableToken)) {
-    return NextResponse.json(
-      { error: "This ordering link isn't valid for this table. Please scan the QR code on your table again." },
-      { status: 403 },
-    );
+  const phone = body.guestPhone?.replace(/\D/g, "").slice(0, 10);
+  if (phone && phone.length !== 10) {
+    return NextResponse.json({ error: "Enter a 10-digit phone number, or leave it blank." }, { status: 400 });
   }
 
   try {
-    const order = createOrder(body);
-    return NextResponse.json({ order }, { status: 201 });
+    const { subOrder, replayed } = createOrder({
+      tableId: session.tableId,
+      stallId: body.stallId,
+      lines: normaliseLines(body.lines),
+      paymentMethod: body.paymentMethod,
+      specialInstructions: typeof body.specialInstructions === "string" ? body.specialInstructions : undefined,
+      guestPhone: phone || undefined,
+      idempotencyKey,
+      expectedTotal: typeof body.expectedTotal === "number" ? body.expectedTotal : undefined,
+    });
+
+    // Phone numbers are masked here; the plaintext value never reaches a log line.
+    console.info(
+      `[order] ${replayed ? "replayed" : "created"} ${subOrder.tokenNumber} table=${subOrder.tableNumber} ` +
+        `stall=${subOrder.stallId} total=${subOrder.total} phone=${maskPhone(subOrder.guestPhone)}`,
+    );
+
+    const stall = getStall(subOrder.stallId);
+    const upiLink =
+      subOrder.paymentMethod === "upi" && stall
+        ? buildUpiLink(stall, subOrder.total, subOrder.tokenNumber)
+        : null;
+
+    return NextResponse.json(
+      { subOrder, publicToken: subOrder.publicToken, upiLink, replayed },
+      { status: replayed ? 200 : 201 },
+    );
   } catch (err) {
-    if (err instanceof OrderValidationError) {
-      return NextResponse.json({ error: err.message }, { status: 422 });
+    if (err instanceof OrderError) {
+      return NextResponse.json({ error: err.message, code: err.code }, { status: err.status });
     }
-    return NextResponse.json({ error: "Could not place order." }, { status: 500 });
+    console.error("[order] unexpected failure", err);
+    return NextResponse.json({ error: "Could not place the order." }, { status: 500 });
   }
 }

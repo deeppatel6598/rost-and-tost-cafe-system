@@ -74,9 +74,15 @@
   --status-new: #cc785c;
   --status-new-bg: #fdeee8;
   --status-new-ink: #8a3f26;
+  --status-accepted: #6a7fa8;
+  --status-accepted-bg: #e8edf7;
+  --status-accepted-ink: #3c4c6b;
   --status-preparing: #d4a017;
   --status-preparing-bg: #fbf1d6;
   --status-preparing-ink: #7a5c05;
+  --status-ready: #2e8b6f;
+  --status-ready-bg: #dff0e6;
+  --status-ready-ink: #1b5c3c;
   --status-served: #2e8b6f;
   --status-served-bg: #e2f2ec;
   --status-served-ink: #1c5a48;
@@ -89,10 +95,11 @@
   --danger: #c64545;
   --danger-bg: #fbeaea;
 
-  /* Veg / non-veg marks — regulatory in India, not decorative. Fixed hues. */
+  /* Food-type marks — regulatory in India, not decorative. Fixed hues. */
   --veg: #0f7a34;
   --nonveg: #9c2b1f;
   --egg: #d4a017;
+  --jain: #1f7a6b;
 
   --tap-guest: 44px;
   --tap-admin: 56px;
@@ -158,14 +165,19 @@
   --focus-ring: rgba(224, 138, 107, 0.4);
   --status-new-bg: #3a231a;
   --status-new-ink: #f0c4b1;
+  --status-accepted-bg: #1e2740;
+  --status-accepted-ink: #b6c6e6;
   --status-preparing-bg: #38300f;
   --status-preparing-ink: #f2dc9c;
+  --status-ready-bg: #143026;
+  --status-ready-ink: #8fd8b0;
   --status-served-bg: #173229;
   --status-served-ink: #9fd8c5;
   --status-cancelled-bg: #26241f;
   --status-cancelled-ink: #b3aea4;
   --veg: #3fa863;
   --nonveg: #d4614f;
+  --jain: #4fbfae;
 }
 
 *, *::before, *::after { box-sizing: border-box; }

@@ -30,7 +30,19 @@ export type FoodArtKey =
   | "nachos"
   | "cheesecake"
   | "brownie"
-  | "mousse";
+  | "mousse"
+  | "vadapav"
+  | "samosa"
+  | "sandwich"
+  | "thali"
+  | "maggi"
+  | "dabeli"
+  | "pavbhaji"
+  | "bunmaska"
+  | "dhokla"
+  | "wrap"
+  | "lassi"
+  | "garlicbread";
 
 const BY_ITEM: Record<string, FoodArtKey> = {
   cortado: "espresso",
@@ -67,10 +79,29 @@ const BY_CATEGORY: Record<string, FoodArtKey> = {
   pizza: "pizza",
   plates: "pasta",
   desserts: "cheesecake",
+  // Canteen categories
+  snacks: "samosa",
+  sandwiches: "sandwich",
+  chai: "chai",
+  beverages: "lassi",
+  pizzas: "pizza",
+  sides: "garlicbread",
+  meals: "thali",
+  rolls: "wrap",
 };
 
+/**
+ * Falls back through: explicit per-item mapping → category default → a safe
+ * generic. Seeded items normally carry their own `art` key, so this only runs
+ * for items created later through the admin without a photo.
+ */
 export function artKeyFor(itemId: string, categoryId: string): FoodArtKey {
-  return BY_ITEM[itemId] ?? BY_CATEGORY[categoryId] ?? "latte";
+  return BY_ITEM[itemId] ?? BY_CATEGORY[categoryId] ?? "thali";
+}
+
+/** Narrow an arbitrary stored string to a known art key. */
+export function asArtKey(value: string | undefined, fallback: FoodArtKey = "thali"): FoodArtKey {
+  return value && value in BG ? (value as FoodArtKey) : fallback;
 }
 
 const BG: Record<FoodArtKey, [string, string]> = {
@@ -95,6 +126,18 @@ const BG: Record<FoodArtKey, [string, string]> = {
   cheesecake: ["#4a3722", "#1f1710"],
   brownie: ["#3a271c", "#18100b"],
   mousse: ["#43273a", "#1b1018"],
+  vadapav: ["#4a3520", "#1f1710"],
+  samosa: ["#4d3a1e", "#201810"],
+  sandwich: ["#3f4326", "#1a1c11"],
+  thali: ["#46381f", "#1e1810"],
+  maggi: ["#4d3f1a", "#1f1a0d"],
+  dabeli: ["#4a3120", "#1f1410"],
+  pavbhaji: ["#4d2f1c", "#20130d"],
+  bunmaska: ["#4a3a24", "#1f1811"],
+  dhokla: ["#4a441c", "#1f1c0d"],
+  wrap: ["#43371f", "#1c1710"],
+  lassi: ["#3f3c30", "#1a1915"],
+  garlicbread: ["#4a3a22", "#1f1810"],
 };
 
 function Shape({ art }: { art: FoodArtKey }) {
@@ -326,6 +369,146 @@ function Shape({ art }: { art: FoodArtKey }) {
           <circle cx="63" cy="41" r="3.4" fill="#a8763f" />
           <circle cx="76" cy="44" r="2.6" fill="#a8763f" />
           <path d="M38 58c8 3 36 3 44 0" stroke="#31190f" strokeWidth="2.4" fill="none" strokeLinecap="round" />
+        </>
+      );
+    case "vadapav":
+      return (
+        <>
+          <ellipse cx="60" cy="80" rx="28" ry="4" fill="#000" opacity=".35" />
+          <path d="M32 56a28 14 0 0 1 56 0v10a6 6 0 0 1-6 6H38a6 6 0 0 1-6-6V56Z" fill="#d9a566" />
+          <path d="M34 58h52" stroke="#8a5a2e" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="60" cy="52" r="15" fill="#a8702f" />
+          <circle cx="55" cy="48" r="3" fill="#c98f47" opacity=".7" />
+          <path d="M40 58c4-3 9-3 13 0M67 58c4-3 9-3 13 0" stroke="#3f6b2a" strokeWidth="2.5" strokeLinecap="round" fill="none" />
+        </>
+      );
+    case "samosa":
+      return (
+        <>
+          <ellipse cx="60" cy="82" rx="26" ry="4" fill="#000" opacity=".35" />
+          <path d="M60 26 92 78H28L60 26Z" fill="#d5a45f" />
+          <path d="M60 26 92 78H60V26Z" fill="#c08f4a" />
+          <path d="M60 30v46" stroke="#8a5f28" strokeWidth="2" opacity=".6" />
+          <path d="M42 66h36" stroke="#8a5f28" strokeWidth="2" opacity=".4" />
+          <circle cx="34" cy="40" r="4" fill="#5f8a3a" opacity=".8" />
+          <circle cx="88" cy="46" r="3" fill="#a8452f" opacity=".8" />
+        </>
+      );
+    case "sandwich":
+      return (
+        <>
+          <ellipse cx="60" cy="82" rx="28" ry="4" fill="#000" opacity=".35" />
+          <path d="M26 62 60 26l34 36-34 14-34-14Z" fill="#e2c187" />
+          <path d="M32 60 60 34l28 26-28 11-28-11Z" fill="#7fae5a" />
+          <path d="M36 58 60 38l24 20-24 9-24-9Z" fill="#f2e2c4" />
+          <path d="M40 56 60 42l20 14-20 7-20-7Z" fill="#d96a4a" />
+          <path d="M26 62l34 14 34-14v8L60 84 26 70v-8Z" fill="#c9a56f" />
+        </>
+      );
+    case "thali":
+      return (
+        <>
+          <ellipse cx="60" cy="84" rx="34" ry="4" fill="#000" opacity=".3" />
+          <circle cx="60" cy="54" r="32" fill="#cfd2d6" />
+          <circle cx="60" cy="54" r="27" fill="#e5e7ea" />
+          <circle cx="48" cy="44" r="8" fill="#d9a13f" />
+          <circle cx="72" cy="44" r="8" fill="#8a4a2a" />
+          <circle cx="44" cy="64" r="7" fill="#5f8a3a" />
+          <circle cx="60" cy="70" r="7" fill="#f2ead6" />
+          <circle cx="76" cy="64" r="7" fill="#c4452f" />
+        </>
+      );
+    case "maggi":
+      return (
+        <>
+          <ellipse cx="60" cy="82" rx="28" ry="4" fill="#000" opacity=".35" />
+          <path d="M30 52h60l-5 22a8 8 0 0 1-8 6H43a8 8 0 0 1-8-6l-5-22Z" fill="#e8e2d6" />
+          <ellipse cx="60" cy="52" rx="30" ry="8" fill="#d9a13f" />
+          <path d="M40 50c6-4 12 2 18-1s12 3 20-1" stroke="#f2c766" strokeWidth="3" strokeLinecap="round" fill="none" />
+          <path d="M42 46c6-3 12 2 18-1s14 2 20-1" stroke="#f2c766" strokeWidth="2.5" strokeLinecap="round" fill="none" opacity=".8" />
+          <circle cx="52" cy="49" r="2.5" fill="#5f8a3a" />
+          <circle cx="70" cy="50" r="2.5" fill="#c4452f" />
+        </>
+      );
+    case "dabeli":
+      return (
+        <>
+          <ellipse cx="60" cy="80" rx="27" ry="4" fill="#000" opacity=".35" />
+          <path d="M33 58a27 15 0 0 1 54 0v8a6 6 0 0 1-6 6H39a6 6 0 0 1-6-6v-8Z" fill="#dda86a" />
+          <path d="M35 59h50" stroke="#8a5a2e" strokeWidth="2.5" strokeLinecap="round" />
+          <path d="M40 56c5-6 12-8 20-8s15 2 20 8" fill="#9c5030" />
+          <circle cx="46" cy="52" r="2" fill="#f2e2c4" />
+          <circle cx="60" cy="49" r="2" fill="#f2e2c4" />
+          <circle cx="74" cy="52" r="2" fill="#f2e2c4" />
+          <path d="M52 46c2-3 5-3 7 0" stroke="#c4452f" strokeWidth="2" fill="none" strokeLinecap="round" />
+        </>
+      );
+    case "pavbhaji":
+      return (
+        <>
+          <ellipse cx="60" cy="84" rx="32" ry="4" fill="#000" opacity=".3" />
+          <ellipse cx="48" cy="60" rx="26" ry="18" fill="#d9d4c8" />
+          <ellipse cx="48" cy="58" rx="21" ry="14" fill="#b8452a" />
+          <ellipse cx="48" cy="56" rx="14" ry="8" fill="#c95a34" />
+          <rect x="42" y="50" width="10" height="6" rx="2" fill="#f2e6c4" />
+          <path d="M78 46h22a4 4 0 0 1 4 4v18a4 4 0 0 1-4 4H78a4 4 0 0 1-4-4V50a4 4 0 0 1 4-4Z" fill="#dda86a" />
+          <path d="M74 58h30" stroke="#8a5a2e" strokeWidth="2" />
+        </>
+      );
+    case "bunmaska":
+      return (
+        <>
+          <ellipse cx="60" cy="80" rx="26" ry="4" fill="#000" opacity=".35" />
+          <path d="M34 54a26 16 0 0 1 52 0v10a5 5 0 0 1-5 5H39a5 5 0 0 1-5-5V54Z" fill="#dfae70" />
+          <path d="M36 56h48" stroke="#8a5a2e" strokeWidth="2.5" strokeLinecap="round" />
+          <rect x="50" y="46" width="20" height="9" rx="2" fill="#f7ecc9" transform="rotate(-6 60 50)" />
+          <path d="M44 44c4-4 9-6 16-6s12 2 16 6" stroke="#c9955a" strokeWidth="2" fill="none" opacity=".6" />
+        </>
+      );
+    case "dhokla":
+      return (
+        <>
+          <ellipse cx="60" cy="82" rx="28" ry="4" fill="#000" opacity=".3" />
+          <rect x="32" y="46" width="56" height="30" rx="4" fill="#e2d76a" />
+          <rect x="32" y="46" width="56" height="7" rx="3" fill="#eee88a" />
+          <path d="M50 46v30M68 46v30" stroke="#c9bd4a" strokeWidth="2" />
+          <path d="M32 61h56" stroke="#c9bd4a" strokeWidth="2" />
+          <circle cx="42" cy="42" r="2.5" fill="#f2f2f2" />
+          <circle cx="60" cy="41" r="2.5" fill="#5f8a3a" />
+          <circle cx="78" cy="42" r="2.5" fill="#f2f2f2" />
+        </>
+      );
+    case "wrap":
+      return (
+        <>
+          <ellipse cx="60" cy="82" rx="24" ry="4" fill="#000" opacity=".35" />
+          <path d="M44 26h20a6 6 0 0 1 6 6v44a8 8 0 0 1-8 8H46a8 8 0 0 1-8-8V32a6 6 0 0 1 6-6Z" fill="#e0be82" />
+          <path d="M44 26h10v58H46a8 8 0 0 1-8-8V32a6 6 0 0 1 6-6Z" fill="#cfa96c" />
+          <path d="M40 40c8 3 24 3 30 0M40 54c8 3 24 3 30 0" stroke="#a8702f" strokeWidth="2" fill="none" opacity=".5" />
+          <path d="M46 30c4 2 12 2 18 0" stroke="#5f8a3a" strokeWidth="3" fill="none" strokeLinecap="round" />
+          <path d="M46 34c4 2 12 2 18 0" stroke="#c4452f" strokeWidth="2.5" fill="none" strokeLinecap="round" />
+        </>
+      );
+    case "lassi":
+      return (
+        <>
+          <ellipse cx="60" cy="84" rx="20" ry="4" fill="#000" opacity=".35" />
+          <path d="M42 34h36l-5 44a6 6 0 0 1-6 5H53a6 6 0 0 1-6-5l-5-44Z" fill="#f2ede0" />
+          <path d="M44 44h32l-4 34a5 5 0 0 1-5 4H53a5 5 0 0 1-5-4l-4-34Z" fill="#f7f4ec" />
+          <ellipse cx="60" cy="36" rx="18" ry="5" fill="#fffdf7" />
+          <circle cx="54" cy="34" r="3" fill="#e8c04a" opacity=".8" />
+          <circle cx="66" cy="35" r="2.5" fill="#c4452f" opacity=".7" />
+        </>
+      );
+    case "garlicbread":
+      return (
+        <>
+          <ellipse cx="60" cy="80" rx="30" ry="4" fill="#000" opacity=".35" />
+          <path d="M28 56a32 12 0 0 1 64 0v6a8 8 0 0 1-8 8H36a8 8 0 0 1-8-8v-6Z" fill="#dfb173" />
+          <path d="M32 54a28 10 0 0 1 56 0" fill="#f0d9a8" />
+          <path d="M46 48v14M60 46v16M74 48v14" stroke="#c9955a" strokeWidth="2.5" strokeLinecap="round" />
+          <circle cx="40" cy="52" r="2" fill="#5f8a3a" />
+          <circle cx="80" cy="53" r="2" fill="#5f8a3a" />
         </>
       );
     case "mousse":

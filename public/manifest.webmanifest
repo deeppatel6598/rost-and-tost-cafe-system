@@ -1,0 +1,15 @@
+{
+  "name": "SK University Canteen",
+  "short_name": "SK Canteen",
+  "description": "Order from your table at the Sakarchand Patel University canteen.",
+  "start_url": "/scan",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#100f0e",
+  "theme_color": "#100f0e",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" },
+    { "src": "/icon-maskable.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "maskable" }
+  ]
+}
