@@ -38,7 +38,7 @@ multi-stall orders without a schema rewrite.
 | `/admin` | stall staff | Live order queue. |
 | `/admin/menu` | stall staff | Menu management, one-tap sold-out toggle. |
 | `/admin/today` | stall owner | Sales, split by cash/UPI, top items, hour chart. |
-| `/admin/stall` | stall owner | Open/close, hours, cash/UPI, payout details. |
+| `/admin/stall` | stall owner | Service mode, hours, cash/UPI, payout details. |
 | `/admin/tables` | any staff | Printable table QR codes. |
 | `/admin/super` | supervisor | Read-mostly view across all four stalls. |
 
@@ -57,6 +57,23 @@ signed QR, so `/order` on its own will send you to the scanner.
 Demo logins are printed on the sign-in screen. **Change them before going
 live** (`SUPER_ADMIN_PASSWORD`, `STALL_PASSWORD`, or create real accounts as
 the supervisor and deactivate the seeds).
+
+## Opening and closing a stall
+
+Each stall has a **service mode**, which is the staff's manual control and
+beats the schedule in both directions:
+
+- **Follow my hours** (normal) — opens and closes automatically on
+  `opens_at`/`closes_at`.
+- **Open now** — keeps serving past the posted closing time.
+- **Closed** — shuts immediately, inside its own hours.
+
+**Pause new orders** sits on top of all three: the stall stays open but stops
+the queue for a few minutes.
+
+Hours are evaluated in `CANTEEN_TIMEZONE` (default `Asia/Kolkata`), *not* the
+server's clock. Hosting runs in UTC, so without this an 11:30am campus lunch
+rush reads as 06:00 on the server and every stall shows as closed.
 
 ## Payments
 

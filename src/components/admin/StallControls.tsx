@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { cn } from "@/lib/cn";
 import type { StallView } from "@/lib/types";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
 import { Button } from "@/components/ui/Button";
@@ -73,13 +74,61 @@ export function StallControls({ canEditPayout }: { canEditPayout: boolean }) {
       <section className="grid gap-3 rounded-xl border border-border bg-surface p-4">
         <h2 className="t-title-md">Taking orders</h2>
 
-        <div className="flex items-center justify-between gap-4">
-          <div>
-            <span className="t-title-sm block">Stall open</span>
-            <span className="t-body-sm text-text-muted">Overrides the opening hours below.</span>
-          </div>
-          <ToggleSwitch checked={stall.isOpen} onChange={(v) => patch({ isOpen: v })} label="Stall open" />
+        <div className="grid gap-2">
+          {(
+            [
+              {
+                mode: "scheduled" as const,
+                title: "Follow my hours",
+                body: `Open ${stall.opensAt}–${stall.closesAt} automatically.`,
+              },
+              {
+                mode: "open" as const,
+                title: "Open now",
+                body: "Keep serving even outside the hours below.",
+              },
+              {
+                mode: "closed" as const,
+                title: "Closed",
+                body: "Stop taking orders until you switch back.",
+              },
+            ]
+          ).map((option) => (
+            <button
+              key={option.mode}
+              type="button"
+              onClick={() => patch({ serviceMode: option.mode }, `Stall set to “${option.title}”`)}
+              disabled={saving}
+              className={cn(
+                "flex items-center gap-3 rounded-lg border p-3 text-left",
+                stall.serviceMode === option.mode ? "border-accent bg-accent-tint" : "border-border",
+              )}
+            >
+              <span className="flex-1">
+                <span className="t-title-sm block">{option.title}</span>
+                <span className="t-body-sm block text-text-muted">{option.body}</span>
+              </span>
+              <span
+                className={cn(
+                  "h-5 w-5 shrink-0 rounded-full border-2",
+                  stall.serviceMode === option.mode ? "border-accent bg-accent" : "border-border-strong",
+                )}
+              />
+            </button>
+          ))}
         </div>
+
+        <p
+          className={cn(
+            "t-body-sm rounded-md px-3 py-2",
+            stall.availability.canOrder
+              ? "bg-status-served-bg text-status-served-ink"
+              : "bg-status-cancelled-bg text-status-cancelled-ink",
+          )}
+        >
+          Students {stall.availability.canOrder ? "can order right now" : "cannot order right now"} —{" "}
+          {stall.availability.label}
+        </p>
 
         <div className="flex items-center justify-between gap-4 border-t border-border pt-3">
           <div>

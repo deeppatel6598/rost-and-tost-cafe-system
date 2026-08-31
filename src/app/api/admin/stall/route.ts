@@ -2,10 +2,12 @@ import { NextRequest, NextResponse } from "next/server";
 import { isOwnerOrAbove, requireStallScope } from "@/lib/api-auth";
 import { recordAudit } from "@/lib/store/audit";
 import { getStall, toStallView, updateStall } from "@/lib/store/stalls";
+import type { ServiceMode } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
 
 const TIME_PATTERN = /^([01]\d|2[0-3]):[0-5]\d$/;
+const SERVICE_MODES: ServiceMode[] = ["scheduled", "open", "closed"];
 
 export async function GET(request: NextRequest) {
   const scope = await requireStallScope(request.nextUrl.searchParams.get("stallId"));
@@ -48,7 +50,7 @@ export async function PATCH(request: NextRequest) {
   }
 
   const stall = updateStall(scope.stallId, {
-    isOpen: typeof body.isOpen === "boolean" ? body.isOpen : undefined,
+    serviceMode: SERVICE_MODES.includes(body.serviceMode) ? body.serviceMode : undefined,
     isPaused: typeof body.isPaused === "boolean" ? body.isPaused : undefined,
     opensAt: typeof body.opensAt === "string" ? body.opensAt : undefined,
     closesAt: typeof body.closesAt === "string" ? body.closesAt : undefined,

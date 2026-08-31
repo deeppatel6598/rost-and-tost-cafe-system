@@ -31,6 +31,9 @@ export type StaffRole = "stall_staff" | "stall_owner" | "super_admin";
 
 export type FulfillmentType = "dine_in";
 
+/** How a stall decides whether it is currently serving. */
+export type ServiceMode = "scheduled" | "open" | "closed";
+
 export interface Stall {
   id: string;
   name: string;
@@ -41,8 +44,12 @@ export interface Stall {
   upiVpa: string;
   upiPayeeName: string;
   gstin?: string;
-  /** Master switch. False = closed regardless of the schedule. */
-  isOpen: boolean;
+  /**
+   * The staff's manual control, and it beats the schedule in both directions:
+   * "open" serves past the posted closing time, "closed" shuts early, and
+   * "scheduled" (the normal setting) follows opensAt/closesAt.
+   */
+  serviceMode: ServiceMode;
   /** Temporarily not taking orders while still "open" (rush, gas out, etc.). */
   isPaused: boolean;
   /** "HH:MM" 24h, campus local time. */
