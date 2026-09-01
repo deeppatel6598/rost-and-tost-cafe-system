@@ -244,3 +244,108 @@ img { display: block; max-width: 100%; }
     transition-duration: 1ms !important;
   }
 }
+
+/* ──────────────────────────────────────────────────────────────────────────
+   Per-stall brand themes.
+
+   The four stalls are separate businesses, so they should not look like four
+   tabs of one app. Each carries its own colour, and every guest surface for
+   that stall re-points the same semantic tokens — a student can tell which
+   kitchen they are ordering from at a glance, before reading a word.
+
+   Applied by putting data-stall="<id>" on a container.
+   ────────────────────────────────────────────────────────────────────────── */
+[data-stall] {
+  --brand-ink: #ffffff;
+}
+
+[data-stall="jay-bhavani"] {
+  --brand-900: #5b1220;
+  --brand-700: #96182f;
+  --brand-500: #d7263d;
+  --brand-300: #f2748a;
+  --brand-tint: rgba(215, 38, 61, 0.12);
+  --brand-grad: linear-gradient(135deg, #e03249 0%, #a8172c 100%);
+}
+
+[data-stall="tea-post"] {
+  --brand-900: #4a2412;
+  --brand-700: #8a4418;
+  --brand-500: #c86a24;
+  --brand-300: #eaa76a;
+  --brand-tint: rgba(200, 106, 36, 0.12);
+  --brand-grad: linear-gradient(135deg, #d4802f 0%, #96491a 100%);
+}
+
+[data-stall="la-pinos"] {
+  --brand-900: #10331f;
+  --brand-700: #1c6238;
+  --brand-500: #22894b;
+  --brand-300: #74c894;
+  --brand-tint: rgba(34, 137, 75, 0.12);
+  --brand-grad: linear-gradient(135deg, #2a9c57 0%, #14602f 100%);
+}
+
+[data-stall="annapurna-tiffin"] {
+  --brand-900: #4d3208;
+  --brand-700: #96650f;
+  --brand-500: #d69420;
+  --brand-300: #f0c473;
+  --brand-tint: rgba(214, 148, 32, 0.12);
+  --brand-grad: linear-gradient(135deg, #e2a52e 0%, #a06c0f 100%);
+}
+
+/* Any stall added later still renders sanely. */
+[data-stall]:not([data-stall="jay-bhavani"]):not([data-stall="tea-post"]):not([data-stall="la-pinos"]):not([data-stall="annapurna-tiffin"]) {
+  --brand-900: #1f2a44;
+  --brand-700: #34497a;
+  --brand-500: #4a63a8;
+  --brand-300: #93a6d6;
+  --brand-tint: rgba(74, 99, 168, 0.12);
+  --brand-grad: linear-gradient(135deg, #5570bb 0%, #2c3f70 100%);
+}
+
+/* ── Depth ────────────────────────────────────────────────────────────────
+   Soft, layered elevation rather than a hard drop shadow: cards should feel
+   lifted off the page without a grey halo, which is what cheap shadows look
+   like on an LCD phone in daylight. */
+:root {
+  --lift-1: 0 1px 2px rgba(16, 15, 14, 0.06), 0 2px 8px rgba(16, 15, 14, 0.05);
+  --lift-2: 0 2px 4px rgba(16, 15, 14, 0.06), 0 8px 24px rgba(16, 15, 14, 0.09);
+  --lift-3: 0 4px 8px rgba(16, 15, 14, 0.07), 0 18px 42px rgba(16, 15, 14, 0.14);
+  --lift-brand: 0 10px 30px -8px var(--brand-tint, rgba(16, 15, 14, 0.2));
+  --r-card: 22px;
+  --r-card-lg: 28px;
+}
+
+.u-lift-1 { box-shadow: var(--lift-1); }
+.u-lift-2 { box-shadow: var(--lift-2); }
+.u-lift-3 { box-shadow: var(--lift-3); }
+
+/*
+ * Frosted bars.
+ *
+ * Glass is used only where it earns its keep — a sticky bar sitting over
+ * scrolling content, where a solid fill would look pasted on and a
+ * transparent one would be unreadable. It is deliberately NOT used for cards
+ * or menu rows: this app is read one-handed on cheap phones in a bright hall,
+ * and low-contrast frosted panels are exactly what fails there.
+ */
+.u-frost {
+  background: color-mix(in srgb, var(--surface) 82%, transparent);
+  backdrop-filter: blur(18px) saturate(140%);
+  -webkit-backdrop-filter: blur(18px) saturate(140%);
+}
+@supports not (backdrop-filter: blur(1px)) {
+  .u-frost { background: var(--surface); }
+}
+
+.u-brand-grad { background-image: var(--brand-grad); }
+
+/* Photographic vignette under artwork, so a flat illustration still reads as
+   a product shot sitting on a surface. */
+.u-photo-plate {
+  background:
+    radial-gradient(120% 90% at 50% 15%, rgba(255, 255, 255, 0.14) 0%, transparent 60%),
+    var(--brand-grad);
+}

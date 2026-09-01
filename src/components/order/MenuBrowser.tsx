@@ -1,8 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
-import { cn } from "@/lib/cn";
 import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 import type { MenuCategory, MenuItemView, StallView } from "@/lib/types";
@@ -10,10 +9,25 @@ import { GuestHeader } from "@/components/order/GuestHeader";
 import { MyOrdersLink } from "@/components/order/MyOrdersLink";
 import { ItemSheet } from "@/components/order/ItemSheet";
 import { CartSheet } from "@/components/order/CartSheet";
-import { FoodArt, artKeyFor, asArtKey } from "@/components/ui/FoodArt";
-import { VegMark } from "@/components/ui/VegMark";
+import { SideTabsMenu } from "@/components/order/menu/SideTabsMenu";
+import { OffersMenu } from "@/components/order/menu/OffersMenu";
+import { HeroMenu } from "@/components/order/menu/HeroMenu";
+import type { MenuLayoutProps } from "@/components/order/menu/shared";
 import { Button } from "@/components/ui/Button";
 import { useToast } from "@/components/ui/Toast";
+
+/**
+ * The chrome around a stall's menu: header, closed notice, cart bar and the
+ * two sheets. The list itself is whichever layout the stall is set to, because
+ * these are four separate businesses and should not read as four tabs of one
+ * app. Everything that has to behave identically — pricing, sold-out handling,
+ * the item sheet, the cart — lives here rather than in the layouts.
+ */
+const LAYOUTS: Record<StallView["menuLayout"], React.ComponentType<MenuLayoutProps>> = {
+  sidetabs: SideTabsMenu,
+  offers: OffersMenu,
+  hero: HeroMenu,
+};
 
 export function MenuBrowser({
   tableNumber,
@@ -30,11 +44,9 @@ export function MenuBrowser({
   const cart = useCart();
   const { showToast } = useToast();
 
-  const [activeCategoryId, setActiveCategoryId] = useState(categories[0]?.id ?? "");
   const [sheetItemId, setSheetItemId] = useState<string | null>(null);
   const [cartOpen, setCartOpen] = useState(false);
   const [liveItems, setLiveItems] = useState(items);
-  const sectionRefs = useRef<Record<string, HTMLElement | null>>({});
 
   // Sold-out toggles have to reach the guest without them reloading. Staff
   // flip these dozens of times a day and a student ordering something the
@@ -57,25 +69,17 @@ export function MenuBrowser({
     };
   }, [stall.id]);
 
-  const itemsByCategory = useMemo(() => {
-    const map = new Map<string, MenuItemView[]>();
-    for (const category of categories) {
-      map.set(
-        category.id,
-        liveItems.filter((i) => i.categoryId === category.id),
-      );
-    }
-    return map;
-  }, [categories, liveItems]);
-
   const sheetItem = sheetItemId ? liveItems.find((i) => i.id === sheetItemId) ?? null : null;
 
-  function scrollToCategory(categoryId: string) {
-    setActiveCategoryId(categoryId);
-    sectionRefs.current[categoryId]?.scrollIntoView({ behavior: "smooth", block: "start" });
-  }
-
   function quickAdd(item: MenuItemView) {
+    if (!stall.availability.canOrder) {
+      showToast(`${stall.name} is not taking orders right now`);
+      return;
+    }
+    if (!item.isAvailable) {
+      showToast(`${item.name} is sold out`);
+      return;
+    }
     // Anything with a required choice has to go through the sheet.
     const needsChoice = item.variants.length > 0 || item.addonGroups.some((g) => g.isRequired);
     if (needsChoice) {
@@ -90,8 +94,10 @@ export function MenuBrowser({
   const cartCount = cartIsForThisStall ? cart.itemCount : 0;
   const cartTotal = cartIsForThisStall ? cart.displayTotal : 0;
 
+  const Layout = LAYOUTS[stall.menuLayout] ?? HeroMenu;
+
   return (
-    <>
+    <div data-stall={stall.id} className="flex min-h-0 flex-1 flex-col">
       <GuestHeader
         tableNumber={tableNumber}
         title={stall.name}
@@ -100,61 +106,23 @@ export function MenuBrowser({
       />
 
       {!stall.availability.canOrder && (
-        <p className="border-b border-border bg-status-cancelled-bg px-4 py-2.5 text-center text-[13px] font-medium text-status-cancelled-ink">
-          {stall.name} is {stall.availability.label.toLowerCase()} — you can browse, but not order right now.
+        <p className="flex-none border-b border-border bg-status-cancelled-bg px-4 py-2.5 text-center text-[13px] font-medium text-status-cancelled-ink">
+          {stall.availability.label} — you can browse the menu, but not order right now.
         </p>
       )}
 
-      {/* Category strip. Sticks under the header so the menu stays reachable. */}
-      <div className="sticky top-[57px] z-20 flex-none border-b border-border bg-bg">
-        <div className="no-scrollbar flex gap-2 overflow-x-auto px-4 py-2.5">
-          {categories.map((category) => (
-            <button
-              key={category.id}
-              type="button"
-              onClick={() => scrollToCategory(category.id)}
-              className={cn(
-                "h-9 shrink-0 whitespace-nowrap rounded-pill border px-4 text-sm font-semibold transition-colors",
-                activeCategoryId === category.id
-                  ? "border-accent bg-accent-tint text-accent"
-                  : "border-border text-text-muted",
-              )}
-            >
-              {category.name}
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <div className="flex-1 overflow-y-auto px-4 pb-[120px] pt-2">
-        {categories.map((category) => {
-          const categoryItems = itemsByCategory.get(category.id) ?? [];
-          if (categoryItems.length === 0) return null;
-          return (
-            <section
-              key={category.id}
-              ref={(el) => {
-                sectionRefs.current[category.id] = el;
-              }}
-              className="scroll-mt-[112px] pt-4"
-            >
-              <h2 className="t-overline mb-1 text-text-faint">{category.name}</h2>
-              {categoryItems.map((item) => (
-                <MenuItemRow
-                  key={item.id}
-                  item={item}
-                  canOrder={stall.availability.canOrder}
-                  onOpen={() => setSheetItemId(item.id)}
-                  onQuickAdd={() => quickAdd(item)}
-                />
-              ))}
-            </section>
-          );
-        })}
-      </div>
+      <Layout
+        stall={stall}
+        categories={categories}
+        items={liveItems}
+        onOpenItem={(id) => setSheetItemId(id)}
+        onQuickAdd={quickAdd}
+      />
 
       {cartCount > 0 && (
-        <div className="sticky bottom-0 z-20 flex-none border-t border-border bg-surface px-4 py-3">
+        // Frosted, because this bar sits over a scrolling list and needs to
+        // read as floating above it rather than as the end of the page.
+        <div className="sticky bottom-0 z-30 flex-none border-t border-border px-4 py-3 u-frost">
           <Button size="hero" fullWidth onClick={() => setCartOpen(true)}>
             <span className="flex w-full items-center justify-between">
               <span>
@@ -181,71 +149,6 @@ export function MenuBrowser({
         stall={stall}
         onCheckout={() => router.push(`/order/${stall.id}/checkout`)}
       />
-    </>
-  );
-}
-
-function MenuItemRow({
-  item,
-  canOrder,
-  onOpen,
-  onQuickAdd,
-}: {
-  item: MenuItemView;
-  canOrder: boolean;
-  onOpen: () => void;
-  onQuickAdd: () => void;
-}) {
-  const soldOut = !item.isAvailable;
-  const hasChoices = item.variants.length > 0 || item.addonGroups.length > 0;
-
-  return (
-    <div
-      className={cn(
-        "flex items-center gap-3 border-b border-border py-3 last:border-b-0",
-        // An unavailable item must look unavailable before it is tapped, not
-        // after — but it stays on the menu, because a student looking for it
-        // needs to see it is sold out rather than assume the app is broken.
-        soldOut && "opacity-55",
-      )}
-    >
-      <button
-        type="button"
-        onClick={onOpen}
-        aria-label={`${item.name}${soldOut ? ", sold out" : ""}`}
-        className="relative h-[68px] w-[68px] shrink-0 overflow-hidden rounded-lg"
-      >
-        <FoodArt art={item.art ? asArtKey(item.art) : artKeyFor(item.id, item.categoryId)} />
-        {soldOut && (
-          <span className="absolute inset-x-0 bottom-0 bg-roast-950/85 py-0.5 text-center text-[9px] font-bold uppercase tracking-wide text-on-dark-soft">
-            Sold out
-          </span>
-        )}
-      </button>
-
-      <button type="button" onClick={onOpen} className="min-w-0 flex-1 text-left">
-        <span className="mb-0.5 flex items-center gap-2">
-          <VegMark type={item.foodType} size={14} />
-          <span className="t-title-sm truncate">{item.name}</span>
-        </span>
-        <span className="t-body-sm line-clamp-2 block text-text-muted">{item.description}</span>
-        <span className="t-mono mt-1 block text-[15px]">{formatCurrency(item.basePrice)}</span>
-      </button>
-
-      <div className="shrink-0">
-        {soldOut ? (
-          <span className="t-caption text-text-faint">Sold out</span>
-        ) : !canOrder ? (
-          <span className="t-caption text-text-faint">Closed</span>
-        ) : (
-          <div className="grid gap-0.5">
-            <Button size="sm" variant="secondary" onClick={onQuickAdd} aria-label={`Add ${item.name}`}>
-              Add
-            </Button>
-            {hasChoices && <span className="text-center text-[10px] text-text-faint">customisable</span>}
-          </div>
-        )}
-      </div>
     </div>
   );
 }

@@ -34,6 +34,20 @@ export type FulfillmentType = "dine_in";
 /** How a stall decides whether it is currently serving. */
 export type ServiceMode = "scheduled" | "open" | "closed";
 
+/**
+ * Which menu layout a stall's guest screen uses.
+ *
+ * The four stalls are separate businesses, so they deliberately do not share
+ * one templated menu. Each layout suits a different kind of ordering:
+ *  - "sidetabs"  a vertical category rail on a brand panel, for a counter with
+ *                a short menu split into clear groups (Jay Bhavani).
+ *  - "offers"    a light, offer-led layout with horizontal rails, for a menu
+ *                sold on deals and combos (La Pinos).
+ *  - "hero"      a brand hero with search and a "new this week" rail, for a
+ *                drinks counter with a wide, browsable range (Tea Post).
+ */
+export type MenuLayout = "sidetabs" | "offers" | "hero";
+
 export interface Stall {
   id: string;
   name: string;
@@ -57,6 +71,10 @@ export interface Stall {
   closesAt: string;
   acceptsCash: boolean;
   acceptsUpi: boolean;
+  /** Which guest menu layout this stall uses. */
+  menuLayout: MenuLayout;
+  /** One-line hook shown on the stall card and menu hero. */
+  tagline: string;
   /** Two-letter prefix for the called-out token, e.g. "LP" → LP-042. */
   tokenPrefix: string;
   /** Per-stall running token counter. Each stall calls its own numbers. */

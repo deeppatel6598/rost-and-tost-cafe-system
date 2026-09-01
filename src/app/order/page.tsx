@@ -19,7 +19,7 @@ export default async function StallSelectionPage() {
       stalls={stalls.map((s) => ({
         id: s.id,
         name: s.name,
-        description: s.description,
+        tagline: s.tagline,
         art: s.art,
         availability: s.availability,
       }))}

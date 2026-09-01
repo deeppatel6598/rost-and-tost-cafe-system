@@ -24,6 +24,9 @@ export type FoodArtKey =
   | "omelette"
   | "granola"
   | "pizza"
+  | "pizzaveg"
+  | "pizzapaneer"
+  | "pizzachicken"
   | "toastie"
   | "bao"
   | "pasta"
@@ -119,6 +122,9 @@ const BG: Record<FoodArtKey, [string, string]> = {
   omelette: ["#4d401c", "#1f1a0d"],
   granola: ["#413320", "#1b1610"],
   pizza: ["#4a2b1e", "#1f120d"],
+  pizzaveg: ["#2f3f22", "#141a0f"],
+  pizzapaneer: ["#46351f", "#1d1610"],
+  pizzachicken: ["#4a2617", "#1f110b"],
   toastie: ["#46331f", "#1f1810"],
   bao: ["#3d3a33", "#1a1917"],
   pasta: ["#334227", "#161c11"],
@@ -300,6 +306,54 @@ function Shape({ art }: { art: FoodArtKey }) {
           <circle cx="72" cy="62" r="4" fill="#f5efe0" />
           <path d="M45 57c2-3 5-4 7-2" stroke="#4f8b3d" strokeWidth="2.6" fill="none" strokeLinecap="round" />
           <path d="M64 40c2-3 5-3 7-1" stroke="#4f8b3d" strokeWidth="2.6" fill="none" strokeLinecap="round" />
+        </>
+      );
+    // The pizza variants share a crust and differ only in toppings, which is
+    // exactly how they differ on the counter — four identical pictures on a
+    // pizza menu is the thing that makes a menu look fake.
+    case "pizzaveg":
+      return (
+        <>
+          <ellipse cx="60" cy="80" rx="32" ry="5" fill="#000" opacity=".35" />
+          <circle cx="60" cy="52" r="32" fill="#dba75f" />
+          <circle cx="60" cy="52" r="26" fill="#c4472f" />
+          <circle cx="52" cy="42" r="4.5" fill="#f5efe0" />
+          <circle cx="70" cy="60" r="4" fill="#f5efe0" />
+          <path d="M44 50a7 7 0 1 1 14 0 7 7 0 0 1-14 0Zm3.4 0a3.6 3.6 0 1 0 7.2 0 3.6 3.6 0 0 0-7.2 0Z" fill="#4f8b3d" />
+          <path d="M64 38a6 6 0 1 1 12 0 6 6 0 0 1-12 0Zm3 0a3 3 0 1 0 6 0 3 3 0 0 0-6 0Z" fill="#4f8b3d" />
+          <circle cx="48" cy="63" r="2.6" fill="#e8c458" />
+          <circle cx="57" cy="68" r="2.6" fill="#e8c458" />
+          <circle cx="76" cy="48" r="2.6" fill="#e8c458" />
+          <path d="M62 66c3-4 8-4 10-1-3 3-8 4-10 1Z" fill="#c9a06a" />
+        </>
+      );
+    case "pizzapaneer":
+      return (
+        <>
+          <ellipse cx="60" cy="80" rx="32" ry="5" fill="#000" opacity=".35" />
+          <circle cx="60" cy="52" r="32" fill="#dba75f" />
+          <circle cx="60" cy="52" r="26" fill="#b8452a" />
+          <rect x="45" y="38" width="12" height="11" rx="2.5" fill="#f7f1e2" transform="rotate(-12 51 43)" />
+          <rect x="63" y="44" width="12" height="11" rx="2.5" fill="#f2e8d2" transform="rotate(14 69 49)" />
+          <rect x="50" y="58" width="12" height="11" rx="2.5" fill="#f7f1e2" transform="rotate(8 56 63)" />
+          <path d="M44 54a5 5 0 1 1 10 0 5 5 0 0 1-10 0Zm2.6 0a2.4 2.4 0 1 0 4.8 0 2.4 2.4 0 0 0-4.8 0Z" fill="#7a4a8f" opacity=".8" />
+          <path d="M67 62c3-3 7-3 9-1-3 3-7 3-9 1Z" fill="#4f8b3d" />
+          <circle cx="72" cy="38" r="2.6" fill="#e8c458" />
+        </>
+      );
+    case "pizzachicken":
+      return (
+        <>
+          <ellipse cx="60" cy="80" rx="32" ry="5" fill="#000" opacity=".35" />
+          <circle cx="60" cy="52" r="32" fill="#dba75f" />
+          <circle cx="60" cy="52" r="26" fill="#bb3f26" />
+          <ellipse cx="50" cy="43" rx="7" ry="5" fill="#9c5a2c" transform="rotate(-14 50 43)" />
+          <ellipse cx="70" cy="50" rx="7" ry="5" fill="#8e4f26" transform="rotate(10 70 50)" />
+          <ellipse cx="55" cy="62" rx="7" ry="5" fill="#9c5a2c" transform="rotate(6 55 62)" />
+          <ellipse cx="72" cy="65" rx="5.5" ry="4" fill="#8e4f26" transform="rotate(-8 72 65)" />
+          <path d="M42 56c5-3 10-2 14 1M60 36c5-1 10 1 13 4" stroke="#eae2cf" strokeWidth="2.6" fill="none" strokeLinecap="round" opacity=".85" />
+          <circle cx="45" cy="49" r="2.4" fill="#4f8b3d" />
+          <circle cx="64" cy="70" r="2.4" fill="#4f8b3d" />
         </>
       );
     case "toastie":
@@ -527,7 +581,20 @@ function Shape({ art }: { art: FoodArtKey }) {
   }
 }
 
-export function FoodArt({ art, className }: { art: FoodArtKey; className?: string }) {
+/**
+ * `bare` drops the artwork's own background so the dish floats on whatever is
+ * behind it — used where the artwork sits on a brand-coloured card and a
+ * second painted rectangle would read as a box inside a box.
+ */
+export function FoodArt({
+  art,
+  className,
+  bare = false,
+}: {
+  art: FoodArtKey;
+  className?: string;
+  bare?: boolean;
+}) {
   const [from, to] = BG[art];
   const gradId = `fa-${art}`;
   return (
@@ -537,13 +604,17 @@ export function FoodArt({ art, className }: { art: FoodArtKey; className?: strin
       preserveAspectRatio="xMidYMid slice"
       role="presentation"
     >
-      <defs>
-        <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor={from} />
-          <stop offset="100%" stopColor={to} />
-        </linearGradient>
-      </defs>
-      <rect width="120" height="100" fill={`url(#${gradId})`} />
+      {!bare && (
+        <>
+          <defs>
+            <linearGradient id={gradId} x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stopColor={from} />
+              <stop offset="100%" stopColor={to} />
+            </linearGradient>
+          </defs>
+          <rect width="120" height="100" fill={`url(#${gradId})`} />
+        </>
+      )}
       <Shape art={art} />
     </svg>
   );

@@ -9,7 +9,7 @@ import { BottomSheet } from "@/components/ui/BottomSheet";
 import { Button } from "@/components/ui/Button";
 import { QuantityStepper } from "@/components/ui/QuantityStepper";
 import { VegMark } from "@/components/ui/VegMark";
-import { FoodArt, artKeyFor, asArtKey } from "@/components/ui/FoodArt";
+import { ItemArt } from "@/components/order/menu/shared";
 
 /** Size, half/full, extra toppings, spice level — chosen before adding to cart. */
 export function ItemSheet({
@@ -101,8 +101,8 @@ export function ItemSheet({
       }
     >
       <div className="grid gap-5">
-        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl">
-          <FoodArt art={item.art ? asArtKey(item.art) : artKeyFor(item.id, item.categoryId)} />
+        <div className="relative aspect-[4/3] w-full overflow-hidden rounded-xl u-photo-plate">
+          <ItemArt item={item} rounded="rounded-xl" />
         </div>
 
         <div className="flex items-center gap-3">
