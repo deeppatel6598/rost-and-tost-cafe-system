@@ -1,5 +1,6 @@
 import { generateId, generatePublicToken } from "@/lib/format";
 import { CANCEL_WINDOW_MS } from "@/lib/order-constants";
+import { PHONE_HELP, isValidPhone, normalisePhone } from "@/lib/phone";
 import { priceCart, PricingError } from "@/lib/pricing";
 import { db } from "@/lib/store/db";
 import { getAvailability, nextTokenNumber } from "@/lib/store/stalls";
@@ -103,7 +104,8 @@ export interface CreateOrderArgs {
   lines: CartLineInput[];
   paymentMethod: PaymentMethod;
   specialInstructions?: string;
-  guestPhone?: string;
+  /** Required — a stall must be able to reach the student about their food. */
+  guestPhone: string;
   idempotencyKey: string;
   /** Optional client-computed total, checked for disagreement only. */
   expectedTotal?: number;
@@ -140,6 +142,10 @@ export function createOrder(args: CreateOrderArgs): CreateOrderResult {
     if (order && sub) {
       return { order, subOrder: toView(sub), replayed: true };
     }
+  }
+
+  if (!isValidPhone(args.guestPhone)) {
+    throw new OrderError(PHONE_HELP, "phone_invalid", 400);
   }
 
   const table = db.tables.find((t) => t.id === args.tableId);
@@ -207,7 +213,7 @@ export function createOrder(args: CreateOrderArgs): CreateOrderResult {
     tableId: table.id,
     fulfillmentType: "dine_in",
     createdAt: now,
-    guestPhone: args.guestPhone,
+    guestPhone: normalisePhone(args.guestPhone),
   };
 
   const subOrder: SubOrder = {

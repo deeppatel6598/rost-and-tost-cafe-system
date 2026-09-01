@@ -6,6 +6,7 @@ import { cn } from "@/lib/cn";
 import { formatCurrency } from "@/lib/format";
 import { useCart } from "@/context/CartContext";
 import { rememberOrder } from "@/lib/my-orders";
+import { PHONE_HELP, isValidPhone } from "@/lib/phone";
 import { newIdempotencyKey, submitOrder } from "@/lib/submit-order";
 import type { PaymentMethod, StallView } from "@/lib/types";
 import { GuestHeader } from "@/components/order/GuestHeader";
@@ -28,6 +29,7 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
   const [method, setMethod] = useState<PaymentMethod | null>(methods.length === 1 ? methods[0] : null);
   const [instructions, setInstructions] = useState("");
   const [phone, setPhone] = useState("");
+  const [phoneTouched, setPhoneTouched] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [retrying, setRetrying] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -35,6 +37,11 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
   // One key per checkout attempt. Reused across retries so a request that
   // actually landed replays instead of creating a second order.
   const [idempotencyKey, setIdempotencyKey] = useState(newIdempotencyKey);
+
+  // The number is required, but the error only appears once they have left
+  // the field or tried to order — nagging someone mid-typing is not help.
+  const phoneOk = isValidPhone(phone);
+  const showPhoneError = !phoneOk && phoneTouched;
 
   const lines = cart.stallId === stall.id ? cart.lines : [];
 
@@ -44,6 +51,13 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
 
   async function placeOrder() {
     if (!method) return;
+    if (!phoneOk) {
+      // Send them to the field rather than just refusing.
+      setPhoneTouched(true);
+      setError("Add your phone number before placing the order.");
+      document.getElementById("guest-phone")?.focus();
+      return;
+    }
     setSubmitting(true);
     setError(null);
     setRetrying(false);
@@ -54,7 +68,7 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
           stallId: stall.id,
           paymentMethod: method,
           specialInstructions: instructions.trim() || undefined,
-          guestPhone: phone.trim() || undefined,
+          guestPhone: phone,
           expectedTotal: cart.displayTotal,
           lines: lines.map((l) => ({
             itemId: l.itemId,
@@ -141,18 +155,34 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
         </label>
 
         <label className="mb-6 grid gap-1.5">
-          <span className="t-overline text-text-faint">Phone number (optional)</span>
+          <span className="t-overline text-text-faint">
+            Phone number <span className="text-accent">*</span>
+          </span>
           <input
             type="tel"
             inputMode="numeric"
+            id="guest-phone"
+            autoComplete="tel"
+            required
             value={phone}
             maxLength={10}
-            onChange={(e) => setPhone(e.target.value.replace(/\D/g, ""))}
+            aria-invalid={showPhoneError ? "true" : undefined}
+            aria-describedby="phone-help"
+            onChange={(e) => setPhone(e.target.value.replace(/\D/g, "").slice(0, 10))}
+            onBlur={() => setPhoneTouched(true)}
             placeholder="10-digit number"
-            className="h-12 rounded-md border border-border bg-surface px-3 text-[15px] placeholder:text-text-faint focus:border-accent"
+            className={cn(
+              "h-12 rounded-md border bg-surface px-3 text-[15px] placeholder:text-text-faint focus:border-accent",
+              showPhoneError ? "border-danger" : "border-border",
+            )}
           />
-          <span className="t-caption text-text-faint">
-            Only used to find your order again if you lose this page.
+          <span
+            id="phone-help"
+            className={cn("t-caption", showPhoneError ? "text-danger" : "text-text-faint")}
+          >
+            {showPhoneError
+              ? PHONE_HELP
+              : "Required. The stall calls this number if there's a problem, and it finds your order if you lose this page."}
           </span>
         </label>
 
@@ -243,9 +273,11 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
           )}
         </Button>
         <p className="t-caption mt-2 text-center text-text-faint">
-          {method === "upi"
-            ? "You'll pay on the next screen, then the stall confirms it."
-            : "Goes straight to the kitchen. Pay at the counter when you collect."}
+          {!phoneOk
+            ? "Add your phone number above to place this order."
+            : method === "upi"
+              ? "You'll pay on the next screen, then the stall confirms it."
+              : "Goes straight to the kitchen. Pay at the counter when you collect."}
         </p>
       </div>
     </>

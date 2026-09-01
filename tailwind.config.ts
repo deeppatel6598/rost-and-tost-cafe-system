@@ -73,6 +73,10 @@ const config: Config = {
           tint: "var(--brand-tint)",
           ink: "var(--brand-ink)",
         },
+        danger: {
+          DEFAULT: "var(--danger)",
+          bg: "var(--danger-bg)",
+        },
         veg: "var(--veg)",
         nonveg: "var(--nonveg)",
         egg: "var(--egg)",

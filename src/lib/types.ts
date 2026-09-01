@@ -239,7 +239,8 @@ export interface CreateOrderInput {
   lines: CartLineInput[];
   paymentMethod: PaymentMethod;
   specialInstructions?: string;
-  guestPhone?: string;
+  /** Required — the stall needs a way to reach the student about their food. */
+  guestPhone: string;
   /** Client-computed total, used only as a disagreement check. */
   expectedTotal?: number;
 }

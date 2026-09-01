@@ -68,6 +68,18 @@ export function OrderDetailSheet({
           <PaymentBadge method={order.paymentMethod} status={order.paymentStatus} />
         </div>
 
+        {/* Every order carries a number now, so staff can call rather than
+            shout a token across the hall when food is going cold. */}
+        {order.guestPhone && (
+          <a
+            href={`tel:${order.guestPhone}`}
+            className="flex items-center justify-between rounded-lg border border-border bg-surface px-4 py-3 no-underline"
+          >
+            <span className="t-body-sm text-text-muted">Student&apos;s phone</span>
+            <span className="t-mono text-[17px] font-semibold text-text">{order.guestPhone}</span>
+          </a>
+        )}
+
         {order.specialInstructions && (
           <p className="rounded-md border-2 border-status-preparing bg-status-preparing-bg px-4 py-3 text-[15px] font-semibold text-status-preparing-ink">
             Special instructions: {order.specialInstructions}

@@ -175,6 +175,10 @@
   --status-served-ink: #9fd8c5;
   --status-cancelled-bg: #26241f;
   --status-cancelled-ink: #b3aea4;
+  /* A wrong answer has to read as wrong on the dark surface too — the light
+     mode red goes muddy against near-black. */
+  --danger: #f0897d;
+  --danger-bg: #3a1e1b;
   --veg: #3fa863;
   --nonveg: #d4614f;
   --jain: #4fbfae;

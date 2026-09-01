@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTableSession } from "@/lib/api-auth";
 import { maskPhone } from "@/lib/format";
+import { isValidPhone, normalisePhone, PHONE_HELP } from "@/lib/phone";
 import { clientIp, pruneRateLimits, rateLimit } from "@/lib/rate-limit";
 import { createOrder, OrderError } from "@/lib/store/orders";
 import { buildUpiLink } from "@/lib/upi";
@@ -75,9 +76,17 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Stall and payment method are required." }, { status: 400 });
   }
 
-  const phone = body.guestPhone?.replace(/\D/g, "").slice(0, 10);
-  if (phone && phone.length !== 10) {
-    return NextResponse.json({ error: "Enter a 10-digit phone number, or leave it blank." }, { status: 400 });
+  // The phone number is required. Checked here as well as in the store so a
+  // request that skips the checkout screen cannot skip the rule.
+  const phone = normalisePhone(body.guestPhone);
+  if (!phone) {
+    return NextResponse.json(
+      { error: "A phone number is required to place an order.", code: "phone_required" },
+      { status: 400 },
+    );
+  }
+  if (!isValidPhone(phone)) {
+    return NextResponse.json({ error: PHONE_HELP, code: "phone_invalid" }, { status: 400 });
   }
 
   try {
@@ -87,7 +96,7 @@ export async function POST(request: NextRequest) {
       lines: normaliseLines(body.lines),
       paymentMethod: body.paymentMethod,
       specialInstructions: typeof body.specialInstructions === "string" ? body.specialInstructions : undefined,
-      guestPhone: phone || undefined,
+      guestPhone: phone,
       idempotencyKey,
       expectedTotal: typeof body.expectedTotal === "number" ? body.expectedTotal : undefined,
     });
