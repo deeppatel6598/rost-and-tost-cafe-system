@@ -5,6 +5,7 @@ import { formatCurrency } from "@/lib/format";
 import type { MenuCategory, MenuItemView, StallView } from "@/lib/types";
 import { FoodArt, artKeyFor, asArtKey } from "@/components/ui/FoodArt";
 import { VegMark } from "@/components/ui/VegMark";
+import { Icon } from "@/components/ui/Icon";
 
 /**
  * Pieces shared by all three stall menu layouts.
@@ -116,15 +117,17 @@ export function AddButton({
         onQuickAdd();
       }}
       className={cn(
-        "grid shrink-0 place-items-center rounded-xl font-bold leading-none transition-transform active:scale-90",
-        size === "lg" ? "h-11 w-11 text-xl" : "h-9 w-9 text-lg",
+        // 44px minimum: this is the most-tapped control in the app and it sits
+        // next to a price, so a near-miss adds the wrong thing to the cart.
+        "grid shrink-0 place-items-center rounded-xl transition-transform active:scale-90",
+        size === "lg" ? "h-12 w-12" : "h-11 w-11",
         disabled && "cursor-not-allowed opacity-40",
         tone === "dark" && "bg-ink-900 text-white",
         tone === "brand" && "bg-brand-500 text-brand-ink",
         tone === "light" && "bg-white text-ink-900 u-lift-1",
       )}
     >
-      +
+      <Icon name="plus" size={size === "lg" ? 24 : 20} strokeWidth={2.25} />
     </button>
   );
 }

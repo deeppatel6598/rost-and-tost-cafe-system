@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { cn } from "@/lib/cn";
+import { Icon } from "@/components/ui/Icon";
 import { AddButton, ItemArt, NameWithMark, Price, SoldOutVeil, groupByCategory, type MenuLayoutProps } from "./shared";
 
 /**
@@ -30,27 +31,25 @@ export function HeroMenu({ stall, categories, items, onOpenItem, onQuickAdd }: M
       {/* Hero. Rounded off at the bottom so the list below reads as a separate
           sheet sliding under it rather than a second block of colour. */}
       <div className="rounded-b-card-lg u-brand-grad px-4 pb-6 pt-5">
-        <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-brand-ink/70">Table service</p>
+        <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-brand-ink/75">Table service</p>
         <h1 className="t-display-xs mt-1 leading-tight text-brand-ink">{stall.tagline}</h1>
 
         <label className="mt-4 flex h-12 items-center gap-2.5 rounded-pill bg-surface px-4 u-lift-2">
-          <span aria-hidden="true" className="text-[15px] text-text-faint">
-            ⌕
-          </span>
+          <Icon name="search" size={18} className="text-text-muted" />
           <input
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search chai, maggi, bun maska…"
             aria-label={`Search the ${stall.name} menu`}
-            className="min-w-0 flex-1 bg-transparent text-[15px] text-text outline-none placeholder:text-text-faint"
+            className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-text outline-none placeholder:text-text-faint"
           />
           {query && (
             <button
               type="button"
               onClick={() => setQuery("")}
               aria-label="Clear search"
-              className="shrink-0 text-[13px] font-semibold text-text-muted"
+              className="-mr-2 h-11 shrink-0 px-2 text-[14px] font-semibold text-accent"
             >
               Clear
             </button>
@@ -152,7 +151,7 @@ function ListRow({
 
       <button type="button" onClick={() => onOpenItem(item.id)} className="min-w-0 flex-1 text-left">
         <NameWithMark item={item} className="t-title-sm" markSize={12} />
-        <span className="t-caption mt-0.5 line-clamp-1 block text-text-muted">{item.description}</span>
+        <span className="t-caption mt-0.5 line-clamp-1 text-text-muted">{item.description}</span>
         <Price value={item.basePrice} className="mt-1 block text-[15px]" />
       </button>
 

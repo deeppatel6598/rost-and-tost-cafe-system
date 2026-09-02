@@ -3,6 +3,7 @@
 import { useEffect, useRef } from "react";
 import { AnimatePresence, motion } from "framer-motion";
 import { cn } from "@/lib/cn";
+import { Icon } from "@/components/ui/Icon";
 
 export function BottomSheet({
   open,
@@ -70,7 +71,7 @@ export function BottomSheet({
                 onClick={onClose}
                 className="grid h-9 w-9 place-items-center rounded-md text-text-muted hover:bg-surface-raised hover:text-text"
               >
-                ✕
+                <Icon name="close" />
               </button>
             </div>
             <div className="flex-1 overflow-y-auto px-5 py-4">{children}</div>

@@ -41,7 +41,7 @@ export function SideTabsMenu({ stall, categories, items, onOpenItem, onQuickAdd 
       {/* Fixed category rail, text rotated to run down the edge. */}
       <nav
         aria-label="Menu categories"
-        className="flex w-[54px] shrink-0 flex-col gap-2 overflow-y-auto border-r border-border bg-surface-sunken py-3"
+        className="flex w-[60px] shrink-0 flex-col gap-2 overflow-y-auto border-r border-border bg-surface-sunken py-3"
       >
         {groups.map(({ category }) => {
           const active = category.id === activeId;
@@ -52,7 +52,7 @@ export function SideTabsMenu({ stall, categories, items, onOpenItem, onQuickAdd 
               onClick={() => jumpTo(category.id)}
               aria-current={active ? "true" : undefined}
               className={cn(
-                "relative mx-auto flex min-h-[104px] w-[42px] items-center justify-center rounded-xl transition-colors",
+                "relative mx-auto flex min-h-[104px] w-[48px] items-center justify-center rounded-xl transition-colors",
                 active ? "u-brand-grad text-brand-ink" : "bg-surface text-text-muted",
               )}
             >
@@ -113,7 +113,7 @@ export function SideTabsMenu({ stall, categories, items, onOpenItem, onQuickAdd 
                         className="t-title-sm text-brand-ink"
                         markSize={13}
                       />
-                      <span className="mt-1 line-clamp-2 block text-[12px] leading-snug text-brand-ink/70">
+                      <span className="mt-1 line-clamp-2 text-[13px] leading-snug text-brand-ink/75">
                         {item.description}
                       </span>
                     </button>

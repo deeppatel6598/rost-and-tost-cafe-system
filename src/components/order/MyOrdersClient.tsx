@@ -9,6 +9,7 @@ import { StatusChip, PaymentBadge } from "@/components/ui/StatusChip";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
+import { Icon } from "@/components/ui/Icon";
 
 /**
  * Every order this browser has placed, newest first. There are no guest
@@ -61,7 +62,7 @@ export function MyOrdersClient() {
           aria-label="Back"
           className="grid h-10 w-10 place-items-center rounded-md border border-border bg-surface-raised text-text no-underline"
         >
-          ←
+          <Icon name="arrow-left" />
         </Link>
         <span className="t-title-md">My orders</span>
       </header>
@@ -73,7 +74,7 @@ export function MyOrdersClient() {
           </div>
         ) : orders.length === 0 ? (
           <EmptyState
-            glyph="▤"
+            icon="receipt"
             title="No orders yet"
             body="Once you order from a stall, it shows up here so you can follow it."
             action={

@@ -40,7 +40,7 @@ export function OffersMenu({ stall, categories, items, onOpenItem, onQuickAdd }:
           menu itself, so this only points at what is already there. */}
       <div className="px-4 pt-4">
         <div className="relative overflow-hidden rounded-card u-brand-grad p-4 u-lift-2">
-          <p className="text-[11px] font-bold uppercase tracking-[0.14em] text-brand-ink/70">Today at the counter</p>
+          <p className="text-[12px] font-bold uppercase tracking-[0.14em] text-brand-ink/75">Today at the counter</p>
           <p className="t-title-md mt-1 max-w-[76%] leading-snug text-brand-ink">{stall.tagline}</p>
           <p className="t-body-sm mt-1 text-brand-ink/75">Baked to order · pay at this stall</p>
           {hero && (
@@ -154,7 +154,7 @@ function FilterChip({ label, active, onClick }: { label: string; active: boolean
       onClick={onClick}
       aria-pressed={active}
       className={cn(
-        "h-9 shrink-0 whitespace-nowrap rounded-pill px-4 text-sm font-semibold transition-colors",
+        "h-11 shrink-0 whitespace-nowrap rounded-pill px-5 text-sm font-semibold transition-colors",
         active ? "u-brand-grad text-brand-ink" : "bg-surface text-text-muted u-lift-1",
       )}
     >

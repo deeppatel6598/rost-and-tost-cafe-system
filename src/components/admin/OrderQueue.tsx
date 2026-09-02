@@ -281,7 +281,7 @@ export function OrderQueue() {
 
       {nothingLive && (
         <EmptyState
-          glyph="✓"
+          icon="check-circle"
           title="Nothing waiting"
           body="New orders land here on their own, with a sound. You don't need to refresh."
         />

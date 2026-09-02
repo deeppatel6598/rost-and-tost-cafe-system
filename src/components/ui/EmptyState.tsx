@@ -1,13 +1,14 @@
 import { cn } from "@/lib/cn";
+import { Icon, type IconName } from "@/components/ui/Icon";
 
 export function EmptyState({
-  glyph,
+  icon,
   title,
   body,
   action,
   className,
 }: {
-  glyph: string;
+  icon: IconName;
   title: string;
   body: string;
   action?: React.ReactNode;
@@ -20,8 +21,8 @@ export function EmptyState({
         className,
       )}
     >
-      <span aria-hidden="true" className="text-3xl text-text-faint">
-        {glyph}
+      <span className="grid h-14 w-14 place-items-center rounded-full bg-surface-raised text-text-muted">
+        <Icon name={icon} size={26} />
       </span>
       <span className="t-title-md">{title}</span>
       <span className="t-body-sm max-w-sm text-text-muted">{body}</span>

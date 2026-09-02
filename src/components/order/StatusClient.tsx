@@ -36,6 +36,12 @@ const HEADLINE: Record<SubOrderStatus, [string, string]> = {
 const POLL_VISIBLE_MS = 5000;
 const POLL_HIDDEN_MS = 20000;
 
+/** "just now" already reads as a time; only real durations take "ago". */
+function elapsedPhrase(iso: string, now: number): string {
+  const elapsed = formatElapsed(iso, now);
+  return elapsed === "just now" ? "just now" : `${elapsed} ago`;
+}
+
 export function StatusClient({ publicToken }: { publicToken: string }) {
   const { showToast } = useToast();
   const [orders, setOrders] = useState<StatusOrder[] | null>(null);
@@ -168,14 +174,18 @@ export function StatusClient({ publicToken }: { publicToken: string }) {
             const needsPayment = order.paymentMethod === "upi" && order.paymentStatus !== "CONFIRMED";
 
             return (
-              <article key={order.id} className="grid gap-4 rounded-2xl border border-border bg-surface p-5">
+              <article
+                key={order.id}
+                data-stall={order.stallId}
+                className="grid gap-4 rounded-2xl border border-border bg-surface p-5"
+              >
                 {/* The token number is the largest thing on the screen — it is
                     what gets called out across a loud canteen. */}
                 <div className="text-center">
                   <span className="t-overline block text-text-faint">{order.stallName}</span>
                   <span className="font-mono text-5xl font-semibold tracking-tight">{order.tokenNumber}</span>
                   <span className="t-body-sm mt-1 block text-text-muted">
-                    Table {order.tableNumber} · placed {formatElapsed(order.createdAt, now)} ago
+                    Table {order.tableNumber} · placed {elapsedPhrase(order.createdAt, now)}
                   </span>
                 </div>
 
@@ -258,14 +268,15 @@ export function StatusClient({ publicToken }: { publicToken: string }) {
 
         <div className="mt-6 grid gap-2">
           <Link href="/order" className="no-underline">
-            <Button size="hero" fullWidth>
+            <Button variant="secondary" size="hero" fullWidth>
               Order from another stall
             </Button>
           </Link>
-          <Link href="/orders" className="no-underline">
-            <Button variant="ghost" size="guest" fullWidth>
-              View all my orders
-            </Button>
+          <Link
+            href="/orders"
+            className="t-body-sm py-2 text-center font-semibold text-text-muted no-underline"
+          >
+            View all my orders
           </Link>
         </div>
       </div>

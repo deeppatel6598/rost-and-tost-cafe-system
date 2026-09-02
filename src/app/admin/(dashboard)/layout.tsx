@@ -12,7 +12,9 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   const stall = session.stallId ? getStall(session.stallId) : null;
 
   return (
-    <div className="flex min-h-screen flex-col">
+    // Staff see their own stall's colour on their own board, which is also
+    // the fastest way to spot that you are signed in to the wrong stall.
+    <div data-stall={session.stallId ?? undefined} className="flex min-h-screen flex-col">
       <AdminNav
         name={session.name}
         role={session.role}

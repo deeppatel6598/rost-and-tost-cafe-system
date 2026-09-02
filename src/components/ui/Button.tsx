@@ -4,7 +4,7 @@ type Variant = "primary" | "secondary" | "ghost" | "danger";
 type Size = "sm" | "guest" | "admin" | "hero";
 
 const VARIANT_CLASSES: Record<Variant, string> = {
-  primary: "bg-accent text-on-primary hover:bg-accent-active",
+  primary: "bg-accent-fill text-accent-on hover:bg-accent-active",
   secondary: "bg-transparent border border-border-strong text-text hover:bg-surface-raised",
   ghost: "bg-transparent text-text-muted hover:text-text hover:bg-surface-raised",
   danger: "bg-red-500 text-on-primary hover:brightness-95",
@@ -36,7 +36,8 @@ export function Button({
     <button
       className={cn(
         "inline-flex items-center justify-center gap-2 font-semibold no-underline transition-colors duration-base",
-        "disabled:opacity-45 disabled:cursor-not-allowed disabled:hover:bg-accent",
+        "disabled:cursor-not-allowed disabled:bg-surface-raised disabled:text-text-muted",
+        "disabled:border-transparent disabled:hover:bg-surface-raised",
         VARIANT_CLASSES[variant],
         SIZE_CLASSES[size],
         fullWidth && "w-full",

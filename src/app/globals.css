@@ -64,11 +64,21 @@
   --text-body: var(--ink-700);
   --text-muted: var(--ink-500);
   --text-faint: var(--ink-400);
-  --accent: var(--coral-500);
-  --accent-active: var(--coral-600);
+  /*
+   * Accent, split into the two jobs it actually does.
+   *
+   * --accent is the colour the accent is *drawn in* (text, borders, icons).
+   * --accent-fill is what a solid button is painted with, and --accent-on is
+   * the text that sits on top of it. Keeping them separate is what stops the
+   * old bug: coral-500 is a fine colour to write in, but white text on it is
+   * 3.3:1 and fails AA, so a filled button needs the darker coral-600 (5.1:1).
+   */
+  --accent: var(--coral-600);
+  --accent-active: #8f4a33;
+  --accent-fill: var(--coral-600);
+  --accent-on: #ffffff;
   --accent-tint: var(--coral-tint);
-  --accent-on: var(--on-primary);
-  --focus-ring: rgba(204, 120, 92, 0.35);
+  --focus-ring: rgba(169, 88, 62, 0.4);
 
   /* Order status — distinct hue + lightness + shape, never colour alone */
   --status-new: #cc785c;
@@ -159,10 +169,15 @@
   --text-body: #d9d5cd;
   --text-muted: var(--on-dark-soft);
   --text-faint: var(--on-dark-faint);
-  --accent: #e08a6b;
-  --accent-active: var(--coral-500);
-  --accent-tint: rgba(224, 138, 107, 0.16);
-  --focus-ring: rgba(224, 138, 107, 0.4);
+  /* On the dark surface the accent has to be light to be legible, which flips
+     the button: a light fill with near-black text (8.6:1) rather than white
+     text on a mid-tone (2.6:1, which is what this used to be). */
+  --accent: var(--coral-300);
+  --accent-active: #eec0ad;
+  --accent-fill: var(--coral-300);
+  --accent-on: #171514;
+  --accent-tint: rgba(224, 164, 143, 0.16);
+  --focus-ring: rgba(224, 164, 143, 0.45);
   --status-new-bg: #3a231a;
   --status-new-ink: #f0c4b1;
   --status-accepted-bg: #1e2740;
@@ -261,6 +276,33 @@ img { display: block; max-width: 100%; }
    ────────────────────────────────────────────────────────────────────────── */
 [data-stall] {
   --brand-ink: #ffffff;
+}
+
+/*
+ * A stall's colour drives its accent too, so the whole flow for that stall —
+ * buttons, selected states, focus rings — is that stall's colour rather than
+ * one shared app colour with brand cards pasted on top.
+ *
+ * Which shade depends on the surface, and the split is forced by contrast, not
+ * taste. On the light admin, white text needs the deep brand-700 (5.0-8.5:1).
+ * On the dark guest app, the fill has to be the light brand-300 with near-black
+ * text (6.6-11.1:1) — brand-500 fails as text on dark for two of the four
+ * stalls, so it is never used for either job.
+ */
+[data-stall] {
+  --accent: var(--brand-700);
+  --accent-active: var(--brand-900);
+  --accent-fill: var(--brand-700);
+  --accent-on: #ffffff;
+  --accent-tint: var(--brand-tint);
+}
+
+[data-surface="roast"] [data-stall],
+[data-stall][data-surface="roast"] {
+  --accent: var(--brand-300);
+  --accent-active: var(--brand-300);
+  --accent-fill: var(--brand-300);
+  --accent-on: #171514;
 }
 
 [data-stall="jay-bhavani"] {

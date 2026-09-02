@@ -1,4 +1,5 @@
 import { cn } from "@/lib/cn";
+import { Icon, type IconName } from "@/components/ui/Icon";
 import type { PaymentMethod, PaymentStatus, SubOrderStatus } from "@/lib/types";
 
 /**
@@ -6,13 +7,13 @@ import type { PaymentMethod, PaymentStatus, SubOrderStatus } from "@/lib/types";
  * glyph and its own wording, so it survives a colour-blind reader and a
  * washed-out phone screen in daylight.
  */
-const STATUS_META: Record<SubOrderStatus, { label: string; glyph: string; bg: string; ink: string }> = {
-  PLACED: { label: "New", glyph: "●", bg: "var(--status-new-bg)", ink: "var(--status-new-ink)" },
-  ACCEPTED: { label: "Accepted", glyph: "◑", bg: "var(--status-accepted-bg)", ink: "var(--status-accepted-ink)" },
-  PREPARING: { label: "Preparing", glyph: "▲", bg: "var(--status-preparing-bg)", ink: "var(--status-preparing-ink)" },
-  READY: { label: "Ready", glyph: "★", bg: "var(--status-ready-bg)", ink: "var(--status-ready-ink)" },
-  COMPLETED: { label: "Collected", glyph: "✓", bg: "var(--status-served-bg)", ink: "var(--status-served-ink)" },
-  CANCELLED: { label: "Cancelled", glyph: "✕", bg: "var(--status-cancelled-bg)", ink: "var(--status-cancelled-ink)" },
+const STATUS_META: Record<SubOrderStatus, { label: string; icon: IconName; bg: string; ink: string }> = {
+  PLACED: { label: "New", icon: "dot", bg: "var(--status-new-bg)", ink: "var(--status-new-ink)" },
+  ACCEPTED: { label: "Accepted", icon: "check", bg: "var(--status-accepted-bg)", ink: "var(--status-accepted-ink)" },
+  PREPARING: { label: "Preparing", icon: "flame", bg: "var(--status-preparing-bg)", ink: "var(--status-preparing-ink)" },
+  READY: { label: "Ready", icon: "bell", bg: "var(--status-ready-bg)", ink: "var(--status-ready-ink)" },
+  COMPLETED: { label: "Collected", icon: "check-circle", bg: "var(--status-served-bg)", ink: "var(--status-served-ink)" },
+  CANCELLED: { label: "Cancelled", icon: "x-circle", bg: "var(--status-cancelled-bg)", ink: "var(--status-cancelled-ink)" },
 };
 
 export function StatusChip({
@@ -34,7 +35,7 @@ export function StatusChip({
       )}
       style={{ background: meta.bg, color: meta.ink }}
     >
-      <span aria-hidden="true">{meta.glyph}</span>
+      <Icon name={meta.icon} size={size === "lg" ? 17 : 14} strokeWidth={2} />
       {meta.label}
     </span>
   );
@@ -78,7 +79,7 @@ export function PaymentBadge({
         className,
       )}
     >
-      <span aria-hidden="true">{method === "cash" ? "₹" : "▣"}</span>
+      <Icon name={method === "cash" ? "cash" : "qr"} size={14} strokeWidth={2} />
       {method === "cash" ? "Cash" : "UPI"} · {PAYMENT_LABEL[status]}
     </span>
   );

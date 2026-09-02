@@ -32,7 +32,12 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
   return (
     <ToastContext.Provider value={{ showToast }}>
       {children}
-      <div className="fixed inset-x-0 bottom-4 z-[100] flex flex-col items-center gap-2 px-4" aria-live="polite">
+      <div
+        // Clears the sticky cart bar: a toast that lands on top of the button
+        // hides the very action the student is reaching for.
+        className="pointer-events-none fixed inset-x-0 bottom-[92px] z-[100] flex flex-col items-center gap-2 px-4"
+        aria-live="polite"
+      >
         {toasts.map((t) => (
           <div
             key={t.id}

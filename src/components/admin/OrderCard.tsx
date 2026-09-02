@@ -6,6 +6,22 @@ import { formatCurrency, formatElapsed } from "@/lib/format";
 import type { SubOrderView } from "@/lib/types";
 import { StatusChip, PaymentBadge } from "@/components/ui/StatusChip";
 import { Button } from "@/components/ui/Button";
+import { Icon } from "@/components/ui/Icon";
+
+/** The colour spine down the card edge, so a full board sorts at a glance
+ *  without anyone reading a word of it. */
+const SPINE: Record<SubOrderView["status"], string> = {
+  PLACED: "var(--status-new)",
+  ACCEPTED: "var(--status-accepted)",
+  PREPARING: "var(--status-preparing)",
+  READY: "var(--status-ready)",
+  COMPLETED: "var(--status-served)",
+  CANCELLED: "var(--status-cancelled)",
+};
+
+/** Minutes an order can sit before the board should start nagging. */
+const WARN_MINUTES = 8;
+const LATE_MINUTES = 15;
 
 const NEXT_LABEL: Record<SubOrderView["status"], string | null> = {
   PLACED: "Accept",
@@ -38,6 +54,11 @@ export function OrderCard({
   }, []);
 
   const nextLabel = NEXT_LABEL[order.status];
+  const waitingMinutes = Math.floor((Date.now() - new Date(order.createdAt).getTime()) / 60000);
+  // Only orders the kitchen still owes anybody can be "late".
+  const open = order.status !== "COMPLETED" && order.status !== "CANCELLED";
+  const late = open && waitingMinutes >= LATE_MINUTES;
+  const warn = open && !late && waitingMinutes >= WARN_MINUTES;
   const blockedOnPayment =
     order.paymentMethod === "upi" && order.status === "PLACED" && order.paymentStatus !== "CONFIRMED";
   const refundDue = order.paymentStatus === "REFUND_DUE";
@@ -45,16 +66,29 @@ export function OrderCard({
   return (
     <article
       className={cn(
-        "grid gap-3 rounded-xl border bg-surface p-4",
+        "grid gap-3 overflow-hidden rounded-xl border bg-surface p-4 pl-5",
         order.status === "PLACED" ? "border-status-new" : "border-border",
         flash && "animate-rt-ring",
       )}
+      style={{ borderLeft: `5px solid ${SPINE[order.status]}` }}
     >
       <button type="button" onClick={onOpen} className="grid gap-2 text-left">
         <div className="flex items-baseline gap-2">
           <span className="font-mono text-2xl font-bold">{order.tokenNumber}</span>
           <span className="t-body-sm font-semibold text-text-muted">T{order.tableNumber}</span>
-          <span className="t-caption ml-auto text-text-faint">{formatElapsed(order.createdAt)}</span>
+          {/* Waiting time is the one number that changes on its own, so it
+              earns colour and an icon once it starts to matter. */}
+          <span
+            className={cn(
+              "t-caption ml-auto inline-flex items-center gap-1 rounded-pill px-2 py-0.5 font-semibold",
+              late && "bg-danger-bg text-danger",
+              warn && "bg-status-preparing-bg text-status-preparing-ink",
+              !late && !warn && "text-text-faint",
+            )}
+          >
+            {(late || warn) && <Icon name="clock" size={13} strokeWidth={2.25} />}
+            {formatElapsed(order.createdAt)}
+          </span>
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
@@ -94,7 +128,8 @@ export function OrderCard({
           Mark refund sent
         </Button>
       ) : blockedOnPayment ? (
-        <p className="rounded-md bg-surface-raised px-3 py-2 text-center text-[13px] font-medium text-text-muted">
+        <p className="flex items-center justify-center gap-2 rounded-md bg-status-preparing-bg px-3 py-2 text-center text-[13px] font-semibold text-status-preparing-ink">
+          <Icon name="alert" size={15} strokeWidth={2} />
           Waiting for payment — confirm it before cooking
         </p>
       ) : nextLabel ? (

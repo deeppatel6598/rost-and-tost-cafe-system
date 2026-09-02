@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { cn } from "@/lib/cn";
 import { useCart } from "@/context/CartContext";
 import { FoodArt, asArtKey } from "@/components/ui/FoodArt";
+import { Icon } from "@/components/ui/Icon";
 import { GuestHeader } from "@/components/order/GuestHeader";
 import { MyOrdersLink } from "@/components/order/MyOrdersLink";
 import { Button } from "@/components/ui/Button";
@@ -113,8 +114,8 @@ export function StallPicker({ tableNumber, stalls }: { tableNumber: number; stal
 
                   {open ? (
                     <span className="flex items-center gap-2.5">
-                      <span className="grid h-9 w-9 place-items-center rounded-full bg-white text-[15px] font-bold text-brand-700">
-                        ↗
+                      <span className="grid h-11 w-11 place-items-center rounded-full bg-white text-brand-700">
+                        <Icon name="arrow-up-right" size={20} strokeWidth={2.25} />
                       </span>
                       <span className="text-[12px] font-bold uppercase tracking-[0.12em] text-brand-ink">
                         View menu

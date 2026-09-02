@@ -1,6 +1,7 @@
 "use client";
 
 import { cn } from "@/lib/cn";
+import { Icon } from "@/components/ui/Icon";
 
 export function QuantityStepper({
   value,
@@ -36,7 +37,7 @@ export function QuantityStepper({
         className={cn("flex items-center justify-center font-semibold text-text hover:text-accent", btnDim)}
         onClick={() => onChange(Math.max(min, value - 1))}
       >
-        {value <= min + 1 ? "🗑" : "−"}
+        <Icon name={value <= min + 1 ? "trash" : "minus"} size={18} strokeWidth={2} />
       </button>
       <span className="t-mono min-w-[1.5em] text-center" aria-live="polite">
         {value}

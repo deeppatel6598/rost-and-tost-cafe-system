@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { cn } from "@/lib/cn";
+import { Icon } from "@/components/ui/Icon";
 import type { FoodType, ItemVariant, MenuCategory, MenuItemView } from "@/lib/types";
 import { Button } from "@/components/ui/Button";
 import { ToggleSwitch } from "@/components/ui/ToggleSwitch";
@@ -241,7 +242,7 @@ export function MenuItemForm({
               className="px-2 text-text-faint hover:text-danger"
               aria-label={`Remove ${variant.name || "variant"}`}
             >
-              ✕
+              <Icon name="close" size={16} />
             </button>
           </div>
         ))}
@@ -372,7 +373,7 @@ export function MenuItemForm({
                     className="px-2 text-text-faint hover:text-danger"
                     aria-label="Remove choice"
                   >
-                    ✕
+                    <Icon name="close" size={16} />
                   </button>
                 </div>
               ))}

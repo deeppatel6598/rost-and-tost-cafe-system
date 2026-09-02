@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { cn } from "@/lib/cn";
+import { Icon } from "@/components/ui/Icon";
 
 /**
  * The table number is shown on every guest screen, prominently, so a student
@@ -22,17 +23,17 @@ export function GuestHeader({
   right?: React.ReactNode;
 }) {
   const backButtonClasses =
-    "grid h-10 w-10 shrink-0 place-items-center rounded-md border border-border bg-surface-raised text-text";
+    "grid h-11 w-11 shrink-0 place-items-center rounded-md border border-border bg-surface-raised text-text";
 
   return (
     <header className="sticky top-0 z-30 flex flex-none items-center gap-3 border-b border-border bg-bg px-4 py-3">
       {onBack ? (
         <button type="button" aria-label="Go back" onClick={onBack} className={backButtonClasses}>
-          ←
+          <Icon name="arrow-left" />
         </button>
       ) : backHref ? (
         <Link href={backHref} aria-label="Go back" className={cn(backButtonClasses, "no-underline")}>
-          ←
+          <Icon name="arrow-left" />
         </Link>
       ) : null}
 

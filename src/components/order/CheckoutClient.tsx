@@ -10,6 +10,7 @@ import { PHONE_HELP, isValidPhone } from "@/lib/phone";
 import { newIdempotencyKey, submitOrder } from "@/lib/submit-order";
 import type { PaymentMethod, StallView } from "@/lib/types";
 import { GuestHeader } from "@/components/order/GuestHeader";
+import { Icon } from "@/components/ui/Icon";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -104,7 +105,7 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
   if (lines.length === 0) return null;
 
   return (
-    <>
+    <div data-stall={stall.id} className="flex min-h-0 flex-1 flex-col">
       <GuestHeader tableNumber={tableNumber} title="Checkout" backHref={`/order/${stall.id}`} />
 
       <div className="flex-1 overflow-y-auto px-4 pb-[180px] pt-4">
@@ -204,8 +205,13 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
                 method === "upi" ? "border-accent bg-accent-tint" : "border-border bg-surface",
               )}
             >
-              <span aria-hidden="true" className="text-2xl">
-                ▣
+              <span
+                className={cn(
+                  "grid h-11 w-11 shrink-0 place-items-center rounded-lg",
+                  method === "upi" ? "bg-accent-fill text-accent-on" : "bg-surface-raised text-text-muted",
+                )}
+              >
+                <Icon name="qr" size={22} />
               </span>
               <span className="flex-1">
                 <span className="t-title-sm block">Pay now with UPI</span>
@@ -215,10 +221,12 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
               </span>
               <span
                 className={cn(
-                  "h-5 w-5 shrink-0 rounded-full border-2",
-                  method === "upi" ? "border-accent bg-accent" : "border-border-strong",
+                  "grid h-6 w-6 shrink-0 place-items-center rounded-full border-2",
+                  method === "upi" ? "border-accent bg-accent text-accent-on" : "border-border-strong",
                 )}
-              />
+              >
+                {method === "upi" && <Icon name="check" size={14} strokeWidth={3} />}
+              </span>
             </button>
           )}
 
@@ -231,8 +239,13 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
                 method === "cash" ? "border-accent bg-accent-tint" : "border-border bg-surface",
               )}
             >
-              <span aria-hidden="true" className="text-2xl">
-                ₹
+              <span
+                className={cn(
+                  "grid h-11 w-11 shrink-0 place-items-center rounded-lg",
+                  method === "cash" ? "bg-accent-fill text-accent-on" : "bg-surface-raised text-text-muted",
+                )}
+              >
+                <Icon name="cash" size={22} />
               </span>
               <span className="flex-1">
                 <span className="t-title-sm block">Pay cash at the counter</span>
@@ -242,10 +255,12 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
               </span>
               <span
                 className={cn(
-                  "h-5 w-5 shrink-0 rounded-full border-2",
-                  method === "cash" ? "border-accent bg-accent" : "border-border-strong",
+                  "grid h-6 w-6 shrink-0 place-items-center rounded-full border-2",
+                  method === "cash" ? "border-accent bg-accent text-accent-on" : "border-border-strong",
                 )}
-              />
+              >
+                {method === "cash" && <Icon name="check" size={14} strokeWidth={3} />}
+              </span>
             </button>
           )}
         </fieldset>
@@ -280,6 +295,6 @@ export function CheckoutClient({ tableNumber, stall }: { tableNumber: number; st
               : "Goes straight to the kitchen. Pay at the counter when you collect."}
         </p>
       </div>
-    </>
+    </div>
   );
 }
