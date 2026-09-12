@@ -6,12 +6,16 @@ import { Icon } from "@/components/ui/Icon";
 import { AddButton, ItemArt, NameWithMark, Price, SoldOutVeil, groupByCategory, type MenuLayoutProps } from "./shared";
 
 /**
- * Tea Post — brand hero with search.
+ * Brand hero with search — used by Tea Post and The Thick Shake.
  *
- * A chai counter has a wide, shallow range where people arrive knowing what
- * they want ("kadak chai, bun maska"), so search is the fastest path and sits
- * in the hero. Below it, a rail of the counter's own picks, then a plain
- * scannable list — the range is too wide for a grid of photos to help.
+ * Both are counters with a wide, shallow range where people arrive already
+ * knowing what they want ("kadak chai"; "Oreo, large"), so search is the
+ * fastest path and sits in the hero. Below it, a rail of the counter's own
+ * picks, then a plain scannable list — the range is too wide for a grid of
+ * photos to help.
+ *
+ * Everything stall-specific is read from props. Nothing here may name a
+ * particular stall's dishes.
  */
 export function HeroMenu({ stall, categories, items, onOpenItem, onQuickAdd }: MenuLayoutProps) {
   const [query, setQuery] = useState("");
@@ -19,6 +23,17 @@ export function HeroMenu({ stall, categories, items, onOpenItem, onQuickAdd }: M
   const groups = useMemo(() => groupByCategory(categories, items), [categories, items]);
 
   const picks = useMemo(() => items.filter((i) => i.isAvailable).slice(0, 6), [items]);
+
+  // Two real dishes off this stall's own menu, shortest names first — they are
+  // the recognisable ones. Hardcoding examples here meant Tea Post's "chai,
+  // maggi, bun maska" showed up on the shake counter, which shares this layout.
+  const placeholder = useMemo(() => {
+    const examples = items
+      .map((i) => i.name)
+      .sort((a, b) => a.length - b.length)
+      .slice(0, 2);
+    return examples.length > 0 ? `Search ${examples.join(", ")}…` : "Search the menu";
+  }, [items]);
 
   const q = query.trim().toLowerCase();
   const results = useMemo(
@@ -40,7 +55,7 @@ export function HeroMenu({ stall, categories, items, onOpenItem, onQuickAdd }: M
             type="search"
             value={query}
             onChange={(e) => setQuery(e.target.value)}
-            placeholder="Search chai, maggi, bun maska…"
+            placeholder={placeholder}
             aria-label={`Search the ${stall.name} menu`}
             className="h-full min-w-0 flex-1 bg-transparent text-[16px] text-text outline-none placeholder:text-text-faint"
           />

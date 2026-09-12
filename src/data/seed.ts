@@ -82,25 +82,23 @@ export const SEED_STALLS: Stall[] = [
     sortOrder: 2,
   },
   {
-    // PLACEHOLDER: the fourth stall's real name was not known at build time.
-    // Renaming it is a one-field edit here (or from the super-admin screen);
-    // the id is referenced by its menu rows below, so change `name` and
-    // `upiPayeeName`, not `id`.
-    id: "annapurna-tiffin",
-    name: "Annapurna Tiffin",
-    description: "Full Gujarati thali, dal rice and everyday meals.",
-    art: "thali",
-    upiVpa: "annapurna.skcanteen@okhdfcbank",
-    upiPayeeName: "Annapurna Tiffin Service",
+    id: "thick-shake",
+    name: "The Thick Shake",
+    description: "Thick shakes, fruit shakes, cold coffee and falooda.",
+    art: "thickshake",
+    upiVpa: "thickshake.skcanteen@okaxis",
+    upiPayeeName: "The Thick Shake",
     serviceMode: "scheduled",
     isPaused: false,
-    opensAt: "11:00",
-    closesAt: "16:00",
+    // A shake counter sells hardest in the afternoon heat and stays open
+    // through the evening, unlike the lunch stalls.
+    opensAt: "10:00",
+    closesAt: "21:00",
     acceptsCash: true,
     acceptsUpi: true,
     menuLayout: "hero",
-    tagline: "A full ghar-jaisa thali, served hot.",
-    tokenPrefix: "AN",
+    tagline: "Thick shakes, loaded with scoops.",
+    tokenPrefix: "TS",
     tokenSeq: 0,
     sortOrder: 3,
   },
@@ -119,9 +117,9 @@ export const SEED_CATEGORIES: MenuCategory[] = [
   { id: "lp-sides", stallId: "la-pinos", name: "Sides & Pasta", sortOrder: 1, isActive: true },
   { id: "lp-beverages", stallId: "la-pinos", name: "Beverages", sortOrder: 2, isActive: true },
 
-  { id: "an-meals", stallId: "annapurna-tiffin", name: "Meals", sortOrder: 0, isActive: true },
-  { id: "an-snacks", stallId: "annapurna-tiffin", name: "Snacks", sortOrder: 1, isActive: true },
-  { id: "an-beverages", stallId: "annapurna-tiffin", name: "Beverages", sortOrder: 2, isActive: true },
+  { id: "ts-shakes", stallId: "thick-shake", name: "Thick Shakes", sortOrder: 0, isActive: true },
+  { id: "ts-fruit", stallId: "thick-shake", name: "Fruit Shakes", sortOrder: 1, isActive: true },
+  { id: "ts-cold", stallId: "thick-shake", name: "Cold Coffee & Falooda", sortOrder: 2, isActive: true },
 ];
 
 function item(
@@ -165,15 +163,21 @@ export const SEED_ITEMS: MenuItem[] = [
   item({ id: "lp-choco-lava", stallId: "la-pinos", categoryId: "lp-sides", name: "Choco Lava Cake", description: "Warm, with a molten centre.", basePrice: 79, foodType: "egg", art: "brownie", sortOrder: 3 }),
   item({ id: "lp-soft-drink", stallId: "la-pinos", categoryId: "lp-beverages", name: "Soft Drink 500ml", description: "Chilled bottle.", basePrice: 40, foodType: "veg", art: "icedtea", sortOrder: 0 }),
 
-  /* ── Annapurna Tiffin ────────────────────────────────────────────────── */
-  item({ id: "an-guj-thali", stallId: "annapurna-tiffin", categoryId: "an-meals", name: "Gujarati Thali", description: "Two sabzi, dal, rice, four rotli, salad and chaas.", basePrice: 120, foodType: "veg", art: "thali", sortOrder: 0 }),
-  item({ id: "an-jain-thali", stallId: "annapurna-tiffin", categoryId: "an-meals", name: "Jain Thali", description: "Full thali cooked without onion, garlic or root vegetables.", basePrice: 130, foodType: "jain", art: "thali", sortOrder: 1 }),
-  item({ id: "an-dal-rice", stallId: "annapurna-tiffin", categoryId: "an-meals", name: "Dal Rice", description: "Gujarati dal with steamed rice and papad.", basePrice: 70, foodType: "veg", art: "thali", sortOrder: 2 }),
-  item({ id: "an-roti-sabzi", stallId: "annapurna-tiffin", categoryId: "an-meals", name: "Roti Sabzi", description: "Four rotli with the sabzi of the day.", basePrice: 80, foodType: "veg", art: "thali", sortOrder: 3 }),
-  item({ id: "an-khichdi", stallId: "annapurna-tiffin", categoryId: "an-meals", name: "Khichdi Kadhi", description: "Comfort khichdi with hot kadhi and ghee.", basePrice: 90, foodType: "veg", art: "thali", sortOrder: 4 }),
-  item({ id: "an-dhokla", stallId: "annapurna-tiffin", categoryId: "an-snacks", name: "Dhokla", description: "Six pieces, steamed fresh, with tempering.", basePrice: 40, foodType: "veg", art: "dhokla", sortOrder: 0 }),
-  item({ id: "an-veg-roll", stallId: "annapurna-tiffin", categoryId: "an-snacks", name: "Veg Frankie Roll", description: "Rotli wrap with masala veg and chutney.", basePrice: 70, foodType: "veg", art: "wrap", sortOrder: 1 }),
-  item({ id: "an-buttermilk", stallId: "annapurna-tiffin", categoryId: "an-beverages", name: "Buttermilk", description: "Fresh chaas, lightly salted.", basePrice: 20, foodType: "veg", art: "lassi", sortOrder: 0 }),
+  /* ── The Thick Shake ───────────────────────────────────────────────────── */
+  item({ id: "ts-oreo", stallId: "thick-shake", categoryId: "ts-shakes", name: "Oreo Thick Shake", description: "Crushed Oreo blended thick, topped with cream.", basePrice: 110, foodType: "veg", art: "thickshake", sortOrder: 0 }),
+  item({ id: "ts-kitkat", stallId: "thick-shake", categoryId: "ts-shakes", name: "KitKat Thick Shake", description: "Blended with KitKat, finished with chocolate sauce.", basePrice: 120, foodType: "veg", art: "thickshake", sortOrder: 1 }),
+  item({ id: "ts-belgian", stallId: "thick-shake", categoryId: "ts-shakes", name: "Belgian Chocolate", description: "Dark Belgian chocolate, extra thick.", basePrice: 130, foodType: "veg", art: "thickshake", sortOrder: 2 }),
+  item({ id: "ts-butterscotch", stallId: "thick-shake", categoryId: "ts-shakes", name: "Butterscotch Shake", description: "Butterscotch ice cream with praline crunch.", basePrice: 100, foodType: "veg", art: "thickshake", sortOrder: 3 }),
+  // Brownie is marked egg, not veg: the food-type mark is regulatory here, not
+  // decorative, and a brownie has egg in it.
+  item({ id: "ts-brownie", stallId: "thick-shake", categoryId: "ts-shakes", name: "Brownie Thick Shake", description: "Chocolate brownie blended in, served with a scoop.", basePrice: 130, foodType: "egg", art: "thickshake", sortOrder: 4 }),
+  item({ id: "ts-mango", stallId: "thick-shake", categoryId: "ts-fruit", name: "Mango Shake", description: "Alphonso pulp, milk and a scoop of vanilla.", basePrice: 90, foodType: "veg", art: "fruitshake", sortOrder: 0 }),
+  item({ id: "ts-strawberry", stallId: "thick-shake", categoryId: "ts-fruit", name: "Strawberry Shake", description: "Fresh strawberry with vanilla ice cream.", basePrice: 90, foodType: "veg", art: "fruitshake", sortOrder: 1 }),
+  item({ id: "ts-banana", stallId: "thick-shake", categoryId: "ts-fruit", name: "Banana Shake", description: "Thick banana shake, lightly sweetened.", basePrice: 70, foodType: "veg", art: "fruitshake", sortOrder: 2 }),
+  item({ id: "ts-chikoo", stallId: "thick-shake", categoryId: "ts-fruit", name: "Chikoo Shake", description: "Sapota blended smooth with chilled milk.", basePrice: 80, foodType: "veg", art: "fruitshake", sortOrder: 3 }),
+  item({ id: "ts-cold-coffee", stallId: "thick-shake", categoryId: "ts-cold", name: "Cold Coffee", description: "Blended thick with ice cream.", basePrice: 60, foodType: "veg", art: "icedcoffee", sortOrder: 0 }),
+  item({ id: "ts-falooda", stallId: "thick-shake", categoryId: "ts-cold", name: "Royal Falooda", description: "Rose syrup, sev, basil seeds and ice cream.", basePrice: 90, foodType: "veg", art: "falooda", sortOrder: 1 }),
+  item({ id: "ts-scoop", stallId: "thick-shake", categoryId: "ts-cold", name: "Ice Cream Scoop", description: "One scoop — vanilla, chocolate or butterscotch.", basePrice: 40, foodType: "veg", art: "icecream", sortOrder: 2 }),
 ];
 
 export const SEED_VARIANTS: ItemVariant[] = [
@@ -198,8 +202,12 @@ export const SEED_VARIANTS: ItemVariant[] = [
   { id: "lp-chick-10", itemId: "lp-chicken-tikka", name: '10" Medium', priceDelta: 140, isAvailable: true, sortOrder: 1 },
   { id: "lp-chick-12", itemId: "lp-chicken-tikka", name: '12" Large', priceDelta: 270, isAvailable: true, sortOrder: 2 },
 
-  { id: "an-thali-regular", itemId: "an-guj-thali", name: "Regular", priceDelta: 0, isAvailable: true, sortOrder: 0 },
-  { id: "an-thali-unlimited", itemId: "an-guj-thali", name: "Unlimited", priceDelta: 50, isAvailable: true, sortOrder: 1 },
+  { id: "ts-oreo-reg", itemId: "ts-oreo", name: "Regular", priceDelta: 0, isAvailable: true, sortOrder: 0 },
+  { id: "ts-oreo-large", itemId: "ts-oreo", name: "Large", priceDelta: 40, isAvailable: true, sortOrder: 1 },
+  { id: "ts-belgian-reg", itemId: "ts-belgian", name: "Regular", priceDelta: 0, isAvailable: true, sortOrder: 0 },
+  { id: "ts-belgian-large", itemId: "ts-belgian", name: "Large", priceDelta: 40, isAvailable: true, sortOrder: 1 },
+  { id: "ts-mango-reg", itemId: "ts-mango", name: "Regular", priceDelta: 0, isAvailable: true, sortOrder: 0 },
+  { id: "ts-mango-large", itemId: "ts-mango", name: "Large", priceDelta: 30, isAvailable: true, sortOrder: 1 },
 ];
 
 export const SEED_ADDON_GROUPS: ItemAddonGroup[] = [
@@ -210,7 +218,9 @@ export const SEED_ADDON_GROUPS: ItemAddonGroup[] = [
   { id: "lp-pizza-toppings", itemId: "lp-margherita", name: "Extra toppings", minSelect: 0, maxSelect: 4, isRequired: false, sortOrder: 0 },
   { id: "lp-farm-toppings", itemId: "lp-farmhouse", name: "Extra toppings", minSelect: 0, maxSelect: 4, isRequired: false, sortOrder: 0 },
   { id: "lp-paneer-toppings", itemId: "lp-paneer-tikka", name: "Extra toppings", minSelect: 0, maxSelect: 4, isRequired: false, sortOrder: 0 },
-  { id: "an-thali-pref", itemId: "an-guj-thali", name: "Preferences", minSelect: 0, maxSelect: 2, isRequired: false, sortOrder: 0 },
+  { id: "ts-oreo-top", itemId: "ts-oreo", name: "Top it up", minSelect: 0, maxSelect: 3, isRequired: false, sortOrder: 0 },
+  { id: "ts-brownie-top", itemId: "ts-brownie", name: "Top it up", minSelect: 0, maxSelect: 3, isRequired: false, sortOrder: 0 },
+  { id: "ts-falooda-ice", itemId: "ts-falooda", name: "Ice cream", minSelect: 1, maxSelect: 1, isRequired: true, sortOrder: 0 },
 ];
 
 export const SEED_ADDONS: ItemAddon[] = [
@@ -243,8 +253,15 @@ export const SEED_ADDONS: ItemAddon[] = [
   { id: "lp-nt-jalapeno", groupId: "lp-paneer-toppings", name: "Jalapeños", priceDelta: 25, isAvailable: true },
   { id: "lp-nt-olives", groupId: "lp-paneer-toppings", name: "Black olives", priceDelta: 25, isAvailable: true },
 
-  { id: "an-tp-nogarlic", groupId: "an-thali-pref", name: "No onion / garlic", priceDelta: 0, isAvailable: true },
-  { id: "an-tp-lessoil", groupId: "an-thali-pref", name: "Less oil", priceDelta: 0, isAvailable: true },
+  { id: "ts-ot-scoop", groupId: "ts-oreo-top", name: "Extra scoop", priceDelta: 30, isAvailable: true },
+  { id: "ts-ot-choco", groupId: "ts-oreo-top", name: "Chocolate sauce", priceDelta: 15, isAvailable: true },
+  { id: "ts-ot-cream", groupId: "ts-oreo-top", name: "Whipped cream", priceDelta: 20, isAvailable: true },
+  { id: "ts-bt-scoop", groupId: "ts-brownie-top", name: "Extra scoop", priceDelta: 30, isAvailable: true },
+  { id: "ts-bt-nuts", groupId: "ts-brownie-top", name: "Roasted nuts", priceDelta: 20, isAvailable: true },
+  { id: "ts-bt-cream", groupId: "ts-brownie-top", name: "Whipped cream", priceDelta: 20, isAvailable: true },
+  { id: "ts-fi-vanilla", groupId: "ts-falooda-ice", name: "Vanilla", priceDelta: 0, isAvailable: true },
+  { id: "ts-fi-rose", groupId: "ts-falooda-ice", name: "Rose", priceDelta: 0, isAvailable: true },
+  { id: "ts-fi-pista", groupId: "ts-falooda-ice", name: "Pista", priceDelta: 10, isAvailable: true },
 ];
 
 /** 24 tables in the canteen hall. Each carries its own signed QR sticker. */
@@ -310,9 +327,9 @@ export const SEED_STAFF: StaffUser[] = [
     isActive: true,
   },
   {
-    id: "staff-an-owner",
-    stallId: "annapurna-tiffin",
-    name: "Annapurna Owner",
+    id: "staff-ts-owner",
+    stallId: "thick-shake",
+    name: "The Thick Shake Owner",
     phone: "9000000041",
     passwordHash: seedPassword("STALL_PASSWORD", "stall123"),
     role: "stall_owner",

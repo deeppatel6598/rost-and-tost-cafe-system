@@ -2,7 +2,7 @@
 
 QR table ordering for the Sakarchand Patel University canteen, across four
 independent stalls: **Jay Bhavani**, **Tea Post**, **La Pinos Pizza** and
-**Annapurna Tiffin**.
+**The Thick Shake**.
 
 The stalls are separate businesses sharing a room and a set of table QR
 codes. They have their own menus, staff, money and UPI accounts, and nothing
@@ -206,10 +206,11 @@ multi-stall single checkout, loyalty, coupons and ratings. The schema does not
 block delivery being added later — `fulfillment_type` and the
 `order → sub_orders` split are both already in place.
 
-## Note on the fourth stall
+## Before taking a single payment
 
-`Annapurna Tiffin` is a **placeholder** — the real fourth stall's name wasn't
-known at build time. Renaming it is a one-field edit in `src/data/seed.ts`
-(change `name` and `upiPayeeName`, leave `id` alone since the menu rows
-reference it). Every stall's UPI VPA in the seed is a placeholder too and must
-be replaced with the real one before taking a single payment.
+Every stall's UPI VPA in `src/data/seed.ts` is a placeholder. Replace all four
+with the real ones — a wrong VPA sends that stall's takings to a stranger.
+Owners can also change their own from the Stall screen, which is audit-logged.
+
+The seeded staff passwords are demo values too (`canteen123`, `stall123`). Set
+`SUPER_ADMIN_PASSWORD` and `STALL_PASSWORD` before the first real seed.

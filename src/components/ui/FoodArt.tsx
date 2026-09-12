@@ -45,7 +45,11 @@ export type FoodArtKey =
   | "dhokla"
   | "wrap"
   | "lassi"
-  | "garlicbread";
+  | "garlicbread"
+  | "thickshake"
+  | "fruitshake"
+  | "falooda"
+  | "icecream";
 
 const BY_ITEM: Record<string, FoodArtKey> = {
   cortado: "espresso",
@@ -91,6 +95,10 @@ const BY_CATEGORY: Record<string, FoodArtKey> = {
   sides: "garlicbread",
   meals: "thali",
   rolls: "wrap",
+  // The Thick Shake
+  "ts-shakes": "thickshake",
+  "ts-fruit": "fruitshake",
+  "ts-cold": "falooda",
 };
 
 /**
@@ -144,6 +152,10 @@ const BG: Record<FoodArtKey, [string, string]> = {
   wrap: ["#43371f", "#1c1710"],
   lassi: ["#3f3c30", "#1a1915"],
   garlicbread: ["#4a3a22", "#1f1810"],
+  thickshake: ["#4a2e22", "#1f1410"],
+  fruitshake: ["#4a2434", "#1f1018"],
+  falooda: ["#45203a", "#1d0f18"],
+  icecream: ["#43352a", "#1c1712"],
 };
 
 function Shape({ art }: { art: FoodArtKey }) {
@@ -563,6 +575,59 @@ function Shape({ art }: { art: FoodArtKey }) {
           <path d="M46 48v14M60 46v16M74 48v14" stroke="#c9955a" strokeWidth="2.5" strokeLinecap="round" />
           <circle cx="40" cy="52" r="2" fill="#5f8a3a" />
           <circle cx="80" cy="53" r="2" fill="#5f8a3a" />
+        </>
+      );
+    case "thickshake":
+      return (
+        <>
+          <ellipse cx="60" cy="86" rx="20" ry="4" fill="#000" opacity=".35" />
+          <rect x="69" y="8" width="4.5" height="30" rx="2.2" fill="#d94f72" transform="rotate(14 71 22)" />
+          <path d="M44 30h32l-4 50a7 7 0 0 1-7 6H55a7 7 0 0 1-7-6l-4-50Z" fill="#f2e6d6" />
+          <path d="M47 42h26l-3.4 37a5 5 0 0 1-5 4.5H55.4a5 5 0 0 1-5-4.5L47 42Z" fill="#8a5334" />
+          <ellipse cx="60" cy="30" rx="16" ry="5" fill="#fbf5ec" />
+          <path d="M47 28c3-9 23-9 26 0-5 4-21 4-26 0Z" fill="#fffaf2" />
+          <ellipse cx="60" cy="21" rx="10" ry="6" fill="#fffdf8" />
+          <ellipse cx="60" cy="15" rx="6" ry="4" fill="#fffdf8" />
+          <circle cx="60" cy="10" r="3.5" fill="#c4452f" />
+        </>
+      );
+    case "fruitshake":
+      return (
+        <>
+          <ellipse cx="60" cy="86" rx="20" ry="4" fill="#000" opacity=".35" />
+          <rect x="69" y="10" width="4.5" height="28" rx="2.2" fill="#5db8a6" transform="rotate(13 71 24)" />
+          <path d="M44 30h32l-4 50a7 7 0 0 1-7 6H55a7 7 0 0 1-7-6l-4-50Z" fill="#f4e8da" />
+          <path d="M47 40h26l-3.4 39a5 5 0 0 1-5 4.5H55.4a5 5 0 0 1-5-4.5L47 40Z" fill="#e8809f" />
+          <ellipse cx="60" cy="30" rx="16" ry="5" fill="#fbeef2" />
+          <ellipse cx="60" cy="24" rx="9.5" ry="5.5" fill="#fffdf8" />
+          <circle cx="78" cy="32" r="7.5" fill="#f2b03c" />
+          <path d="M78 25v14M71 32h14" stroke="#d8912a" strokeWidth="1.6" strokeLinecap="round" />
+        </>
+      );
+    case "falooda":
+      return (
+        <>
+          <ellipse cx="60" cy="88" rx="19" ry="4" fill="#000" opacity=".35" />
+          <rect x="70" y="6" width="3.4" height="36" rx="1.7" fill="#c2bcae" transform="rotate(10 71 24)" />
+          <path d="M45 26h30l-3 56a7 7 0 0 1-7 6.5H55a7 7 0 0 1-7-6.5L45 26Z" fill="#efe9df" opacity=".6" />
+          <path d="M49 64h22l-1.4 17a5 5 0 0 1-5 4.5H55.4a5 5 0 0 1-5-4.5L49 64Z" fill="#c43a5e" />
+          <path d="M48 46h24l-1 18H49l-1-18Z" fill="#f7f1e6" />
+          <path d="M47 32h26l-1 14H48l-1-14Z" fill="#f0d3de" />
+          <ellipse cx="60" cy="27" rx="14" ry="5" fill="#fffdf8" />
+          <ellipse cx="60" cy="20" rx="9" ry="5.5" fill="#fffdf8" />
+          <circle cx="60" cy="14" r="3.2" fill="#c4452f" />
+        </>
+      );
+    case "icecream":
+      return (
+        <>
+          <ellipse cx="60" cy="84" rx="24" ry="4" fill="#000" opacity=".35" />
+          <path d="M40 54h40l-4 24a8 8 0 0 1-8 7H52a8 8 0 0 1-8-7l-4-24Z" fill="#f2ece0" />
+          <ellipse cx="60" cy="54" rx="20" ry="6" fill="#e4dbcb" />
+          <circle cx="50" cy="44" r="11" fill="#f7e6c2" />
+          <circle cx="70" cy="46" r="10" fill="#8a5334" />
+          <circle cx="60" cy="35" r="9.5" fill="#e896b0" />
+          <path d="M60 26c2-4 6-4 8-1" stroke="#5f8a3a" strokeWidth="2.5" fill="none" strokeLinecap="round" />
         </>
       );
     case "mousse":

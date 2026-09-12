@@ -332,17 +332,20 @@ img { display: block; max-width: 100%; }
   --brand-grad: linear-gradient(135deg, #2a9c57 0%, #14602f 100%);
 }
 
-[data-stall="annapurna-tiffin"] {
-  --brand-900: #4d3208;
-  --brand-700: #96650f;
-  --brand-500: #d69420;
-  --brand-300: #f0c473;
-  --brand-tint: rgba(214, 148, 32, 0.12);
-  --brand-grad: linear-gradient(135deg, #e2a52e 0%, #a06c0f 100%);
+/* Berry, for the shake counter. Measured, not chosen by eye: brand-700 takes
+   white at 8.7:1 on the light admin, brand-300 takes near-black ink at 8.0:1
+   on the dark guest app, and reads as text on that surface at 8.4:1. */
+[data-stall="thick-shake"] {
+  --brand-900: #3d0f2b;
+  --brand-700: #8a1d5a;
+  --brand-500: #c42a7f;
+  --brand-300: #f08cc0;
+  --brand-tint: rgba(196, 42, 127, 0.12);
+  --brand-grad: linear-gradient(135deg, #d1348a 0%, #6e1548 100%);
 }
 
 /* Any stall added later still renders sanely. */
-[data-stall]:not([data-stall="jay-bhavani"]):not([data-stall="tea-post"]):not([data-stall="la-pinos"]):not([data-stall="annapurna-tiffin"]) {
+[data-stall]:not([data-stall="jay-bhavani"]):not([data-stall="tea-post"]):not([data-stall="la-pinos"]):not([data-stall="thick-shake"]) {
   --brand-900: #1f2a44;
   --brand-700: #34497a;
   --brand-500: #4a63a8;
