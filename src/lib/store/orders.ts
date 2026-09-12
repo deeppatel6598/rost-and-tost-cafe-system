@@ -4,6 +4,7 @@ import { PHONE_HELP, isValidPhone, normalisePhone } from "@/lib/phone";
 import { priceCart, PricingError } from "@/lib/pricing";
 import { db } from "@/lib/store/db";
 import { getAvailability, nextTokenNumber } from "@/lib/store/stalls";
+import { claimVisit, currentVisitsByPhone, getVisit } from "@/lib/store/visits";
 import type {
   CartLineInput,
   Order,
@@ -96,6 +97,34 @@ export function listAllSubOrders(): SubOrderView[] {
   return [...db.subOrders].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).map(toView);
 }
 
+/**
+ * Every order belonging to a set of visits, newest first.
+ *
+ * Callers pass the visits that resolve to one person, so this is the query
+ * behind "my orders" — it follows the student across tables and across a
+ * closed browser tab.
+ */
+export function listOrdersForVisits(visitIds: string[]): SubOrderView[] {
+  if (visitIds.length === 0) return [];
+  const wanted = new Set(visitIds);
+  const orderIds = new Set(db.orders.filter((o) => wanted.has(o.visitId)).map((o) => o.id));
+  return db.subOrders
+    .filter((s) => orderIds.has(s.orderId))
+    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
+    .map(toView);
+}
+
+/**
+ * The orders a session should see: everything from every current visit
+ * carrying its phone number, or just this sitting before the first checkout.
+ */
+export function listOrdersForSession(visitId: string | undefined): SubOrderView[] {
+  const visit = getVisit(visitId);
+  if (!visit) return [];
+  if (!visit.guestPhone) return listOrdersForVisits([visit.id]);
+  return listOrdersForVisits(currentVisitsByPhone(visit.guestPhone).map((v) => v.id));
+}
+
 /* ── Order creation ──────────────────────────────────────────────────────── */
 
 export interface CreateOrderArgs {
@@ -106,6 +135,8 @@ export interface CreateOrderArgs {
   specialInstructions?: string;
   /** Required — a stall must be able to reach the student about their food. */
   guestPhone: string;
+  /** The sitting this order is being placed during. */
+  visitId: string;
   idempotencyKey: string;
   /** Optional client-computed total, checked for disagreement only. */
   expectedTotal?: number;
@@ -113,6 +144,9 @@ export interface CreateOrderArgs {
 
 export interface CreateOrderResult {
   order: Order;
+  /** The visit the order actually landed on — may differ from the one passed
+   *  in, when a different phone number supersedes the sitting. */
+  visitId: string;
   subOrder: SubOrderView;
   /** True when this call replayed an existing order rather than creating one. */
   replayed: boolean;
@@ -140,7 +174,7 @@ export function createOrder(args: CreateOrderArgs): CreateOrderResult {
     const order = db.orders.find((o) => o.id === existingOrderId);
     const sub = db.subOrders.find((s) => s.orderId === existingOrderId);
     if (order && sub) {
-      return { order, subOrder: toView(sub), replayed: true };
+      return { order, visitId: order.visitId, subOrder: toView(sub), replayed: true };
     }
   }
 
@@ -207,10 +241,16 @@ export function createOrder(args: CreateOrderArgs): CreateOrderResult {
 
   const now = new Date().toISOString();
 
+  // Resolve identity last, once the order is certain to be written: a different
+  // phone number retires the sitting, and that must not happen for an attempt
+  // that then fails on price or availability.
+  const visit = claimVisit(args.visitId, args.guestPhone);
+
   const order: Order = {
     id: generateId("ord"),
     publicToken: generatePublicToken(),
     tableId: table.id,
+    visitId: visit.id,
     fulfillmentType: "dine_in",
     createdAt: now,
     guestPhone: normalisePhone(args.guestPhone),
@@ -249,7 +289,7 @@ export function createOrder(args: CreateOrderArgs): CreateOrderResult {
   db.subOrderItems.push(...subItems);
   db.idempotency.set(args.idempotencyKey, order.id);
 
-  return { order, subOrder: toView(subOrder), replayed: false };
+  return { order, visitId: visit.id, subOrder: toView(subOrder), replayed: false };
 }
 
 /* ── State machine ───────────────────────────────────────────────────────── */

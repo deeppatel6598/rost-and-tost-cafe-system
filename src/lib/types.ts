@@ -142,11 +142,38 @@ export interface DiningTable {
   isActive: boolean;
 }
 
+/**
+ * One student's sitting at one table.
+ *
+ * An order used to belong to a table and to nothing else, which is a modelling
+ * mistake: a table is furniture. It does not order food and it is still there
+ * when the next student sits down. A visit is the thing that actually orders.
+ *
+ * The phone number is the identity. It is stamped on the first checkout, and
+ * an order placed with a *different* number is treated as a different guest.
+ * The table only scopes who may claim a number in the first place.
+ */
+export interface Visit {
+  id: string;
+  tableId: string;
+  /** Stamped on first checkout. Undefined until then. */
+  guestPhone?: string;
+  openedAt: string;
+  lastActivityAt: string;
+  /** Set only by an explicit end; otherwise a visit ages out of the window. */
+  closedAt?: string;
+  closedReason?: VisitCloseReason;
+}
+
+export type VisitCloseReason = "guest_ended" | "superseded";
+
 export interface Order {
   id: string;
   /** Random, used in the public status URL. Never a sequential id. */
   publicToken: string;
   tableId: string;
+  /** The sitting this order was placed during. */
+  visitId: string;
   fulfillmentType: FulfillmentType;
   createdAt: string;
   guestPhone?: string;

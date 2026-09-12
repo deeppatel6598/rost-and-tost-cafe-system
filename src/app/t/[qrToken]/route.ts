@@ -1,7 +1,9 @@
 import { cookies } from "next/headers";
 import { NextRequest, NextResponse } from "next/server";
 import { createTableToken, TABLE_COOKIE, TABLE_SESSION_TTL_SECONDS } from "@/lib/auth";
+import { getTableSession } from "@/lib/api-auth";
 import { resolveTableByToken } from "@/lib/store/tables";
+import { getCurrentVisitForTable, openVisit, touchVisit } from "@/lib/store/visits";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,11 @@ interface Params {
  * sends them to stall selection. The table is never read from a query
  * parameter and never trusted from the client after this point — every order
  * takes its table from this cookie.
+ *
+ * Re-scanning is the normal way back in after closing the tab, so this rejoins
+ * the sitting the cookie already names rather than starting a new one. A scan
+ * with no usable cookie opens a fresh, anonymous visit; it stays anonymous
+ * until the first checkout stamps a phone number on it.
  */
 export async function GET(request: NextRequest, { params }: Params) {
   const table = resolveTableByToken(params.qrToken);
@@ -25,7 +32,16 @@ export async function GET(request: NextRequest, { params }: Params) {
     return NextResponse.redirect(new URL("/table-not-found", request.url));
   }
 
-  const token = await createTableToken({ tableId: table.id, tableNumber: table.tableNumber });
+  const existing = await getTableSession();
+  const rejoined = getCurrentVisitForTable(existing?.visitId, table.id);
+  if (rejoined) touchVisit(rejoined.id);
+  const visit = rejoined ?? openVisit(table.id);
+
+  const token = await createTableToken({
+    tableId: table.id,
+    tableNumber: table.tableNumber,
+    visitId: visit.id,
+  });
 
   cookies().set(TABLE_COOKIE, token, {
     httpOnly: true,

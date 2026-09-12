@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { requireTableSession } from "@/lib/api-auth";
+import { requireTableSession, resolveVisitId, setTableSessionCookie } from "@/lib/api-auth";
 import { maskPhone } from "@/lib/format";
 import { isValidPhone, normalisePhone, PHONE_HELP } from "@/lib/phone";
 import { clientIp, pruneRateLimits, rateLimit } from "@/lib/rate-limit";
@@ -13,8 +13,8 @@ export const dynamic = "force-dynamic";
 /**
  * Placing an order costs the student nothing, so it needs a ceiling.
  *
- * The per-session limit is the meaningful one: it is scoped to a single table
- * and is what stops one person spamming tokens. The per-IP limit is a blunt
+ * The per-session limit is the meaningful one: it is scoped to a single
+ * sitting and is what stops one person spamming tokens. The per-IP limit is a blunt
  * backstop and is deliberately generous, because campus wifi NATs the whole
  * canteen behind a handful of addresses — set it too low and the lunch rush
  * throttles itself. Both are env-tunable so the numbers can be adjusted
@@ -42,9 +42,13 @@ export async function POST(request: NextRequest) {
   if (!scope.ok) return scope.response;
   const { session } = scope;
 
+  const visitId = await resolveVisitId(session);
+
   pruneRateLimits();
   const ip = clientIp(request.headers);
-  const perSession = rateLimit(`order:table:${session.tableId}`, PER_SESSION_LIMIT, WINDOW_MS);
+  // Keyed on the sitting, not the table: two students at one table each get
+  // their own budget, rather than sharing one and throttling each other.
+  const perSession = rateLimit(`order:visit:${visitId}`, PER_SESSION_LIMIT, WINDOW_MS);
   const perIp = rateLimit(`order:ip:${ip}`, PER_IP_LIMIT, WINDOW_MS);
   if (!perSession.allowed || !perIp.allowed) {
     const retry = Math.max(perSession.retryAfterSeconds, perIp.retryAfterSeconds);
@@ -90,8 +94,9 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { subOrder, replayed } = createOrder({
+    const { subOrder, replayed, visitId: landedOn } = createOrder({
       tableId: session.tableId,
+      visitId,
       stallId: body.stallId,
       lines: normaliseLines(body.lines),
       paymentMethod: body.paymentMethod,
@@ -106,6 +111,13 @@ export async function POST(request: NextRequest) {
       `[order] ${replayed ? "replayed" : "created"} ${subOrder.tokenNumber} table=${subOrder.tableNumber} ` +
         `stall=${subOrder.stallId} total=${subOrder.total} phone=${maskPhone(subOrder.guestPhone)}`,
     );
+
+    // A different phone number retires the sitting and starts a new one, so
+    // the cookie has to follow or the student would still be looking at the
+    // previous person's order list.
+    if (landedOn !== visitId) {
+      await setTableSessionCookie({ ...session, visitId: landedOn });
+    }
 
     const stall = getStall(subOrder.stallId);
     const upiLink =

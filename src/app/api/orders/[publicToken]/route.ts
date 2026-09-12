@@ -12,6 +12,12 @@ interface Params {
 /**
  * Guest-facing order status. Addressed by the random public_token, never by a
  * sequential id, so possession of the link is the only way to read an order.
+ *
+ * Because the link *is* the credential, this response must carry nothing the
+ * link holder should not have. The phone number is stripped here: it is now
+ * mandatory at checkout, so leaving it in would hand a real number to anyone
+ * who saw the URL over a shoulder or in a shared browser history. Staff still
+ * get it, through the authenticated stall route.
  */
 export async function GET(_request: NextRequest, { params }: Params) {
   const subOrders = getSubOrdersByPublicToken(params.publicToken);
@@ -21,8 +27,9 @@ export async function GET(_request: NextRequest, { params }: Params) {
 
   const enriched = subOrders.map((sub) => {
     const stall = getStall(sub.stallId);
+    const { guestPhone: _guestPhone, ...safe } = sub;
     return {
-      ...sub,
+      ...safe,
       upiLink:
         sub.paymentMethod === "upi" && stall && sub.paymentStatus !== "CONFIRMED"
           ? buildUpiLink(stall, sub.total, sub.tokenNumber)

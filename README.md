@@ -8,6 +8,31 @@ The stalls are separate businesses sharing a room and a set of table QR
 codes. They have their own menus, staff, money and UPI accounts, and nothing
 is shared between them anywhere in this system.
 
+## Who an order belongs to
+
+An order belongs to a **visit** — one student's sitting at one table — not to
+the table itself. A table is furniture: it does not order food and it is still
+there when the next student sits down.
+
+**The phone number is the identity.** It is mandatory at checkout, it stamps
+the visit on first use, and an order placed with a different number is treated
+as a different guest from that moment on. That is what separates two students
+at one table without a timer and without asking staff to press anything.
+
+Two consequences worth knowing:
+
+- **Closing the tab is harmless.** The order list is rebuilt server-side from
+  the seating cookie, so reopening the site or re-scanning the table code
+  brings it back. Browser storage is only a cache now.
+- **The list follows the person, not the table.** Food is collected at the
+  counter when a token is called, so a student who moves from table 7 to table
+  12 keeps every order.
+
+If the cookie is lost as well — cleared storage, a different phone, an in-app
+browser — "Find my order" takes the phone number **and** an order token (e.g.
+`LP-042`) and is scoped to the table whose code was just scanned. There is
+deliberately no way to search by phone number alone.
+
 ## The one architectural decision to understand
 
 **A cart belongs to exactly one stall.** A student cannot mix Jay Bhavani and
@@ -109,8 +134,8 @@ an order that was already paid sets `REFUND_DUE`, which surfaces in the stall's
 
 ## Security
 
-Verified end to end by `npm run build` plus the acceptance harness (51 checks,
-all passing) covering:
+Verified end to end by `npm run build` plus the acceptance harnesses (88
+checks, all passing) covering:
 
 1. **Server-side pricing.** The client sends item, variant and addon **ids and
    quantities only**. Every rupee is recomputed from the database; a client
@@ -132,6 +157,22 @@ all passing) covering:
 10. **Phone numbers masked** in application logs.
 11. Counter staff cannot change the payout VPA; only the stall owner can, and
     it takes a deliberate confirmation step.
+12. **The public order link carries no phone number.** Possession of the link
+    is the credential, so the response is stripped of anything the link holder
+    should not have. Staff read it through the authenticated stall route.
+13. **Recovery needs two secrets and physical presence**: the phone number, an
+    order token, and a session from that table's printed code. Throttled per
+    session and per IP.
+14. **Rate limiting is per sitting**, not per table, so two students at one
+    table cannot throttle each other.
+
+### One accepted risk
+
+Because the phone number is the identity, someone sitting at the same table who
+already knows another student's number could enter it at checkout and be joined
+to that student's visit, seeing their recent orders from that table. The blast
+radius is one table within four hours. Closing it properly needs SMS OTP, which
+is out of scope for this build. It is recorded here rather than left implicit.
 
 ## Data — no database yet
 

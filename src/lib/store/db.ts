@@ -21,6 +21,7 @@ import type {
   StaffUser,
   SubOrder,
   SubOrderItem,
+  Visit,
 } from "@/lib/types";
 
 /**
@@ -53,6 +54,7 @@ export interface Database {
   addonGroups: ItemAddonGroup[];
   addons: ItemAddon[];
   tables: DiningTable[];
+  visits: Visit[];
   orders: Order[];
   subOrders: SubOrder[];
   subOrderItems: SubOrderItem[];
@@ -71,6 +73,7 @@ function createDatabase(): Database {
     addonGroups: structuredClone(SEED_ADDON_GROUPS),
     addons: structuredClone(SEED_ADDONS),
     tables: structuredClone(SEED_TABLES),
+    visits: [],
     orders: [],
     subOrders: [],
     subOrderItems: [],

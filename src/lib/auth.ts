@@ -28,6 +28,14 @@ export interface StaffSession {
 export interface TableSession {
   tableId: string;
   tableNumber: number;
+  /**
+   * The sitting this browser belongs to.
+   *
+   * Optional on the type, not by choice: cookies minted before visits existed
+   * carry no visitId, and those students are mid-meal. They keep working and
+   * get a fresh visit on their next scan rather than a crash or a logout.
+   */
+  visitId?: string;
 }
 
 export async function createStaffToken(session: StaffSession): Promise<string> {
@@ -65,7 +73,11 @@ export async function verifyTableSessionToken(token: string): Promise<TableSessi
   try {
     const { payload } = await jwtVerify(token, getSecretKey());
     if (typeof payload.tableId !== "string" || typeof payload.tableNumber !== "number") return null;
-    return { tableId: payload.tableId, tableNumber: payload.tableNumber };
+    return {
+      tableId: payload.tableId,
+      tableNumber: payload.tableNumber,
+      visitId: typeof payload.visitId === "string" ? payload.visitId : undefined,
+    };
   } catch {
     return null;
   }

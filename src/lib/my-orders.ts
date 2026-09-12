@@ -41,6 +41,21 @@ export function rememberOrder(order: RememberedOrder): void {
 }
 
 /** Distinct public tokens, newest first, for the "my orders" screen. */
+/**
+ * Forget everything this browser remembers.
+ *
+ * Used when a student hands the phone to someone else. The server-side sitting
+ * is ended separately; this clears the local cache so no stale status link is
+ * left behind for the next person to open.
+ */
+export function clearRememberedOrders(): void {
+  try {
+    localStorage.removeItem(STORAGE_KEY);
+  } catch {
+    /* storage unavailable — nothing was cached to begin with */
+  }
+}
+
 export function listRememberedTokens(): string[] {
   const seen = new Set<string>();
   for (const order of listRememberedOrders()) {

@@ -1,58 +1,85 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import Link from "next/link";
 import { formatCurrency, formatElapsed } from "@/lib/format";
-import { listRememberedTokens } from "@/lib/my-orders";
 import type { SubOrderView } from "@/lib/types";
 import { StatusChip, PaymentBadge } from "@/components/ui/StatusChip";
 import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
+import { RecoverOrderSheet } from "@/components/order/RecoverOrderSheet";
 
 /**
- * Every order this browser has placed, newest first. There are no guest
- * accounts, so this is rebuilt from the tokens kept in local storage.
+ * Everything this student has ordered, newest first.
+ *
+ * The list comes from the server now, keyed on the seating cookie, so closing
+ * the tab no longer loses it — and because the server resolves by phone
+ * number, it follows the student across tables and across devices once they
+ * recover a session. Local storage is only a cache for the status links.
+ *
+ * Polling mirrors StatusClient: slow right down when the tab is hidden, and
+ * stop entirely once nothing is still cooking. A forgotten tab on a student's
+ * phone should not sit there draining the battery until the end of term.
  */
+const POLL_VISIBLE_MS = 8000;
+const POLL_HIDDEN_MS = 30000;
+
+type Order = SubOrderView & { publicToken: string };
+
+const isSettled = (o: Order) => o.status === "COMPLETED" || o.status === "CANCELLED";
+
 export function MyOrdersClient() {
-  const [orders, setOrders] = useState<(SubOrderView & { publicToken: string })[] | null>(null);
+  const [orders, setOrders] = useState<Order[] | null>(null);
+  const [seated, setSeated] = useState(true);
+  const [recovering, setRecovering] = useState(false);
 
-  useEffect(() => {
-    let cancelled = false;
-
-    async function load() {
-      const tokens = listRememberedTokens();
-      if (tokens.length === 0) {
-        if (!cancelled) setOrders([]);
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch("/api/my-orders");
+      if (res.status === 401) {
+        setSeated(false);
+        setOrders([]);
         return;
       }
+      if (!res.ok) return;
+      const data = await res.json();
+      setSeated(true);
+      setOrders(data.subOrders as Order[]);
+    } catch {
+      /* keep the last known list on a flaky connection */
+    }
+  }, []);
 
-      const results = await Promise.all(
-        tokens.map(async (token) => {
-          try {
-            const res = await fetch(`/api/orders/${token}`);
-            if (!res.ok) return [];
-            const data = await res.json();
-            return data.subOrders as (SubOrderView & { publicToken: string })[];
-          } catch {
-            return [];
-          }
-        }),
-      );
+  useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
+    let cancelled = false;
 
+    async function tick() {
       if (cancelled) return;
-      const flat = results.flat().sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));
-      setOrders(flat);
+      await load();
+      if (cancelled) return;
+      setOrders((current) => {
+        // Nothing left to watch — stop rescheduling.
+        if (current && current.length > 0 && current.every(isSettled)) return current;
+        const delay = document.visibilityState === "hidden" ? POLL_HIDDEN_MS : POLL_VISIBLE_MS;
+        timer = setTimeout(tick, delay);
+        return current;
+      });
     }
 
-    load();
-    const poll = setInterval(load, 10000);
+    tick();
+    const onVisible = () => {
+      if (document.visibilityState === "visible") load();
+    };
+    document.addEventListener("visibilitychange", onVisible);
     return () => {
       cancelled = true;
-      clearInterval(poll);
+      clearTimeout(timer);
+      document.removeEventListener("visibilitychange", onVisible);
     };
-  }, []);
+  }, [load]);
 
   return (
     <>
@@ -60,7 +87,7 @@ export function MyOrdersClient() {
         <Link
           href="/order"
           aria-label="Back"
-          className="grid h-10 w-10 place-items-center rounded-md border border-border bg-surface-raised text-text no-underline"
+          className="grid h-11 w-11 place-items-center rounded-md border border-border bg-surface-raised text-text no-underline"
         >
           <Icon name="arrow-left" />
         </Link>
@@ -72,15 +99,31 @@ export function MyOrdersClient() {
           <div className="grid place-items-center py-16">
             <Spinner className="h-7 w-7 text-accent" />
           </div>
+        ) : !seated ? (
+          <EmptyState
+            icon="qr"
+            title="Scan your table code"
+            body="Your orders are tied to the table you're sitting at. Scan the code on the table to see them."
+            action={
+              <Link href="/scan" className="no-underline">
+                <Button size="sm">Scan the code</Button>
+              </Link>
+            }
+          />
         ) : orders.length === 0 ? (
           <EmptyState
             icon="receipt"
             title="No orders yet"
             body="Once you order from a stall, it shows up here so you can follow it."
             action={
-              <Link href="/order" className="no-underline">
-                <Button size="sm">Browse the stalls</Button>
-              </Link>
+              <div className="grid gap-2">
+                <Link href="/order" className="no-underline">
+                  <Button size="sm">Browse the stalls</Button>
+                </Link>
+                <Button size="sm" variant="ghost" onClick={() => setRecovering(true)}>
+                  Ordered already? Find my order
+                </Button>
+              </div>
             }
           />
         ) : (
@@ -106,14 +149,30 @@ export function MyOrdersClient() {
           </div>
         )}
 
-        <div className="mt-6">
+        <div className="mt-6 grid gap-2">
           <Link href="/order" className="no-underline">
             <Button size="hero" fullWidth>
               Order from another stall
             </Button>
           </Link>
+          {seated && orders !== null && orders.length > 0 && (
+            <button
+              type="button"
+              onClick={() => setRecovering(true)}
+              className="t-body-sm py-2 text-center font-semibold text-text-muted"
+            >
+              Not your orders? Start fresh
+            </button>
+          )}
         </div>
       </div>
+
+      <RecoverOrderSheet
+        open={recovering}
+        onClose={() => setRecovering(false)}
+        hasOrders={(orders?.length ?? 0) > 0}
+        onChanged={load}
+      />
     </>
   );
 }
