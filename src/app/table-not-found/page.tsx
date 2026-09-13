@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CANTEEN_SHORT_NAME } from "@/data/seed";
+import { CANTEEN_SHORT_NAME } from "@/data/canteen";
 
 export const metadata = { title: "Table not recognised" };
 

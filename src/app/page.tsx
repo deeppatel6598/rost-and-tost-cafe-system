@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CANTEEN_NAME } from "@/data/seed";
+import { CANTEEN_NAME } from "@/data/canteen";
 import { listStallViews } from "@/lib/store/stalls";
 import { FoodArt, asArtKey } from "@/components/ui/FoodArt";
 

@@ -19,8 +19,9 @@ import type {
  * Nothing here is shared between them.
  */
 
-export const CANTEEN_NAME = "Sakarchand Patel University Canteen";
-export const CANTEEN_SHORT_NAME = "SK University Canteen";
+// Re-exported so existing server-side importers keep working; the definitions
+// live in data/canteen.ts, which pulls in no server-only code.
+export { CANTEEN_NAME, CANTEEN_SHORT_NAME } from "@/data/canteen";
 
 export const SEED_STALLS: Stall[] = [
   {
