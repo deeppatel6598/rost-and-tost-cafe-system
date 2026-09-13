@@ -1,10 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { jwtVerify } from "jose";
 import { STAFF_COOKIE } from "@/lib/auth";
+import { authSecretKey } from "@/lib/secret";
 
 function getSecretKey(): Uint8Array {
-  const secret = process.env.AUTH_SECRET || "dev-only-insecure-secret-change-me";
-  return new TextEncoder().encode(secret);
+  return authSecretKey();
 }
 
 /**

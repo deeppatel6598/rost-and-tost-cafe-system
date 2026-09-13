@@ -81,11 +81,19 @@ function LoginForm() {
           {loading ? "Signing in…" : "Sign in"}
         </Button>
 
-        <p className="t-caption text-center text-text-faint">
-          Demo logins — stalls: 9000000011 / 9000000021 / 9000000031 / 9000000041, password{" "}
-          <span className="font-mono">stall123</span>. Supervisor: 9000000001 /{" "}
-          <span className="font-mono">canteen123</span>. Change these before going live.
-        </p>
+        {/*
+          Development only. These are the seed script's accounts, and printing
+          them on a public login page hands every stall's till to anyone who
+          opens /admin/login. NODE_ENV is inlined at build time, so the text is
+          not merely hidden in a production bundle — it is not in it.
+        */}
+        {process.env.NODE_ENV !== "production" && (
+          <p className="t-caption text-center text-text-faint">
+            Demo logins — stalls: 9000000011 / 9000000021 / 9000000031 / 9000000041, password{" "}
+            <span className="font-mono">stall123</span>. Supervisor: 9000000001 /{" "}
+            <span className="font-mono">canteen123</span>. Change these before going live.
+          </p>
+        )}
       </form>
     </div>
   );

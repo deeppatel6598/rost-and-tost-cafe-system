@@ -1,4 +1,5 @@
 import { SignJWT, jwtVerify } from "jose";
+import { authSecretKey } from "@/lib/secret";
 import type { StaffRole } from "@/lib/types";
 
 export const STAFF_COOKIE = "sk_staff_session";
@@ -13,8 +14,7 @@ export const STAFF_SESSION_TTL_SECONDS = 60 * 60 * 4;
 export const TABLE_SESSION_TTL_SECONDS = 60 * 60 * 4;
 
 function getSecretKey(): Uint8Array {
-  const secret = process.env.AUTH_SECRET || "dev-only-insecure-secret-change-me";
-  return new TextEncoder().encode(secret);
+  return authSecretKey();
 }
 
 export interface StaffSession {

@@ -1,4 +1,5 @@
 import { createHmac, timingSafeEqual } from "crypto";
+import { authSecret } from "@/lib/secret";
 
 /**
  * Dining-table QR tokens.
@@ -16,7 +17,7 @@ import { createHmac, timingSafeEqual } from "crypto";
  */
 
 function getSecret(): string {
-  return process.env.AUTH_SECRET || "dev-only-insecure-secret-change-me";
+  return authSecret();
 }
 
 const TOKEN_LENGTH = 20;
