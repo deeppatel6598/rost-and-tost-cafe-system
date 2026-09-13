@@ -355,6 +355,19 @@ function isUniqueViolation(err: unknown): boolean {
   return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
 }
 
+/**
+ * Whether this checkout has already been written.
+ *
+ * A cheap primary-key probe, used by the order route so that a replay does not
+ * spend the student's rate-limit budget. A phone retrying on a bad connection
+ * is placing one order, not ten, and must never be answered with "too many
+ * orders too quickly" for food that is already on the counter.
+ */
+export async function isKnownIdempotencyKey(key: string): Promise<boolean> {
+  const rows = await sql`select 1 from idempotency_keys where key = ${key}`;
+  return rows.length > 0;
+}
+
 async function findByIdempotencyKey(key: string): Promise<CreateOrderResult | null> {
   const [order] = await sql<Order[]>`
     select o.* from orders o

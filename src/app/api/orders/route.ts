@@ -2,8 +2,8 @@ import { NextRequest, NextResponse } from "next/server";
 import { requireTableSession, resolveVisitId, setTableSessionCookie } from "@/lib/api-auth";
 import { maskPhone } from "@/lib/format";
 import { isValidPhone, normalisePhone, PHONE_HELP } from "@/lib/phone";
-import { clientIp, pruneRateLimits, rateLimit } from "@/lib/rate-limit";
-import { createOrder, OrderError } from "@/lib/store/orders";
+import { clientIp, pruneRateLimits, rateLimit, refundRateLimit } from "@/lib/rate-limit";
+import { createOrder, isKnownIdempotencyKey, OrderError } from "@/lib/store/orders";
 import { buildUpiLink } from "@/lib/upi";
 import { getStall } from "@/lib/store/stalls";
 import type { CartLineInput, CreateOrderInput } from "@/lib/types";
@@ -44,20 +44,6 @@ export async function POST(request: NextRequest) {
 
   const visitId = await resolveVisitId(session);
 
-  pruneRateLimits();
-  const ip = clientIp(request.headers);
-  // Keyed on the sitting, not the table: two students at one table each get
-  // their own budget, rather than sharing one and throttling each other.
-  const perSession = rateLimit(`order:visit:${visitId}`, PER_SESSION_LIMIT, WINDOW_MS);
-  const perIp = rateLimit(`order:ip:${ip}`, PER_IP_LIMIT, WINDOW_MS);
-  if (!perSession.allowed || !perIp.allowed) {
-    const retry = Math.max(perSession.retryAfterSeconds, perIp.retryAfterSeconds);
-    return NextResponse.json(
-      { error: "Too many orders too quickly. Please wait a moment.", code: "rate_limited" },
-      { status: 429, headers: { "Retry-After": String(retry) } },
-    );
-  }
-
   // The idempotency key is generated once per checkout attempt on the client,
   // so a double-tap or an offline retry of a request that actually landed
   // replays the first order instead of creating a second one.
@@ -67,6 +53,39 @@ export async function POST(request: NextRequest) {
       { error: "Missing idempotency key.", code: "missing_idempotency_key" },
       { status: 400 },
     );
+  }
+
+  // The limit counts orders, not requests. A key we have already written is a
+  // replay of an order that exists, so it skips the budget entirely — a phone
+  // retrying on bad campus wifi is placing one order, and being told "too many
+  // orders" for food already being cooked is the worst possible answer.
+  const sessionKey = `order:visit:${visitId}`;
+  const ipKey = `order:ip:${clientIp(request.headers)}`;
+  let spentBudget = false;
+
+  const replaying = await isKnownIdempotencyKey(idempotencyKey);
+  if (!replaying) {
+    pruneRateLimits();
+    // Keyed on the sitting, not the table: two students at one table each get
+    // their own budget, rather than sharing one and throttling each other.
+    const perSession = rateLimit(sessionKey, PER_SESSION_LIMIT, WINDOW_MS);
+    const perIp = rateLimit(ipKey, PER_IP_LIMIT, WINDOW_MS);
+    spentBudget = true;
+    if (!perSession.allowed || !perIp.allowed) {
+      // The original may have committed while this retry was queuing behind
+      // it, so look once more before refusing. A replay answered with 429 tells
+      // a student their order failed when it is already being cooked.
+      if (await isKnownIdempotencyKey(idempotencyKey)) {
+        refundRateLimit(sessionKey);
+        refundRateLimit(ipKey);
+      } else {
+        const retry = Math.max(perSession.retryAfterSeconds, perIp.retryAfterSeconds);
+        return NextResponse.json(
+          { error: "Too many orders too quickly. Please wait a moment.", code: "rate_limited" },
+          { status: 429, headers: { "Retry-After": String(retry) } },
+        );
+      }
+    }
   }
 
   let body: CreateOrderInput;
@@ -105,6 +124,14 @@ export async function POST(request: NextRequest) {
       idempotencyKey,
       expectedTotal: typeof body.expectedTotal === "number" ? body.expectedTotal : undefined,
     });
+
+    // The probe above cannot catch a replay whose original was still in flight,
+    // so the budget is handed back here instead. Either way the limit counts
+    // orders, never requests.
+    if (replayed && spentBudget) {
+      refundRateLimit(sessionKey);
+      refundRateLimit(ipKey);
+    }
 
     // Phone numbers are masked here; the plaintext value never reaches a log line.
     console.info(

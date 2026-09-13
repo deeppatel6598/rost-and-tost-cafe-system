@@ -48,6 +48,20 @@ export function rateLimit(key: string, limit: number, windowMs: number): RateLim
   return { allowed: true, remaining: limit - existing.count, retryAfterSeconds: 0 };
 }
 
+/**
+ * Hand a spent unit back.
+ *
+ * The order limit is meant to count *orders*, not HTTP requests. When a
+ * request turns out to be a replay of a checkout that was already written,
+ * it created nothing, so the budget it consumed is returned. Without this a
+ * phone retrying through a dropout would burn a student's whole minute on a
+ * single plate of food.
+ */
+export function refundRateLimit(key: string): void {
+  const existing = windows.get(key);
+  if (existing && existing.count > 0) existing.count -= 1;
+}
+
 /** Opportunistic cleanup so the map doesn't grow without bound. */
 export function pruneRateLimits(): void {
   const now = Date.now();
