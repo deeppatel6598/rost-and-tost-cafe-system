@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
  */
 
 export type IconName =
+  | "shield"
   | "arrow-left"
   | "arrow-up-right"
   | "chevron-right"
@@ -106,6 +107,13 @@ const PATHS: Record<IconName, JSX.Element> = {
     <>
       <circle cx="12" cy="12" r="8.5" />
       <path d="M12 7.5V12l3 1.8" />
+    </>
+  ),
+  // A shield with a tick — the only icon in the set that means "verified".
+  shield: (
+    <>
+      <path d="M12 3l7 3v5.2c0 4.3-2.9 8.2-7 9.3-4.1-1.1-7-5-7-9.3V6z" />
+      <path d="M9.2 12.1l2 2 3.6-3.9" />
     </>
   ),
   alert: (

@@ -10,6 +10,7 @@ import { Spinner } from "@/components/ui/Spinner";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { Icon } from "@/components/ui/Icon";
 import { RecoverOrderSheet } from "@/components/order/RecoverOrderSheet";
+import { VerifyPhoneSheet } from "@/components/order/VerifyPhoneSheet";
 
 /**
  * Everything this student has ordered, newest first.
@@ -34,6 +35,11 @@ export function MyOrdersClient() {
   const [orders, setOrders] = useState<Order[] | null>(null);
   const [seated, setSeated] = useState(true);
   const [recovering, setRecovering] = useState(false);
+  const [verifying, setVerifying] = useState(false);
+  // The number this sitting is ordering under, echoed back by the server so
+  // the code screen does not have to ask for it a second time.
+  const [phone, setPhone] = useState<string | null>(null);
+  const [canVerify, setCanVerify] = useState(false);
 
   const load = useCallback(async () => {
     try {
@@ -47,6 +53,8 @@ export function MyOrdersClient() {
       const data = await res.json();
       setSeated(true);
       setOrders(data.subOrders as Order[]);
+      setPhone(data.phone ?? null);
+      setCanVerify(Boolean(data.canVerify));
     } catch {
       /* keep the last known list on a flaky connection */
     }
@@ -128,6 +136,21 @@ export function MyOrdersClient() {
           />
         ) : (
           <div className="grid gap-3">
+            {canVerify && phone && (
+              <button
+                type="button"
+                onClick={() => setVerifying(true)}
+                className="flex w-full items-center gap-3 rounded-xl border border-accent/40 bg-accent-tint p-4 text-left"
+              >
+                <Icon name="shield" className="shrink-0 text-accent" />
+                <span className="grid gap-0.5">
+                  <span className="t-body-sm font-semibold">See all your orders on this phone</span>
+                  <span className="t-caption text-text-muted">
+                    Verify your number once and we&apos;ll remember this phone.
+                  </span>
+                </span>
+              </button>
+            )}
             {orders.map((order) => (
               <Link
                 key={order.id}
@@ -173,6 +196,15 @@ export function MyOrdersClient() {
         hasOrders={(orders?.length ?? 0) > 0}
         onChanged={load}
       />
+
+      {phone && (
+        <VerifyPhoneSheet
+          open={verifying}
+          phone={phone}
+          onClose={() => setVerifying(false)}
+          onVerified={load}
+        />
+      )}
     </>
   );
 }

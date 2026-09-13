@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTableSession, resolveVisitId, setTableSessionCookie } from "@/lib/api-auth";
+import { ensureDeviceHash } from "@/lib/device";
 import { maskPhone } from "@/lib/format";
 import { isValidPhone, normalisePhone, PHONE_HELP } from "@/lib/phone";
 import { clientIp, pruneRateLimits, rateLimit, refundRateLimit } from "@/lib/rate-limit";
@@ -116,6 +117,10 @@ export async function POST(request: NextRequest) {
     const { subOrder, replayed, visitId: landedOn } = await createOrder({
       tableId: session.tableId,
       visitId,
+      // Minted here rather than on every page: a student who only browses a
+      // menu never needed a year-long cookie, but one who orders does, so
+      // their next sitting on this phone joins up without a code.
+      deviceHash: ensureDeviceHash(),
       stallId: body.stallId,
       lines: normaliseLines(body.lines),
       paymentMethod: body.paymentMethod,

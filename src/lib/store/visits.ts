@@ -79,6 +79,9 @@ export async function endVisit(id: string, reason: VisitCloseReason, tx: Db = sq
  * moves from table 7 to table 12 must not lose their orders. Because this
  * query spans tables, two visits with one number are already one person and
  * nothing ever has to be merged.
+ *
+ * Callers must have established that the caller is entitled to the number —
+ * see visitsVisibleTo, which is what every guest-facing path actually uses.
  */
 export async function currentVisitsByPhone(phone: string): Promise<Visit[]> {
   const wanted = normalisePhone(phone);
@@ -86,6 +89,35 @@ export async function currentVisitsByPhone(phone: string): Promise<Visit[]> {
   return sql<Visit[]>`
     select * from visits
     where guest_phone = ${wanted} and ${CURRENT}
+    order by last_activity_at desc
+  `;
+}
+
+/**
+ * The sittings this browser is allowed to see for a number.
+ *
+ * Two ways to qualify, and the first is why most students never meet a code
+ * at all:
+ *
+ *  1. **This browser opened the sitting.** It placed the order; it can see it.
+ *     A student moving between tables on one phone stays whole, with no SMS
+ *     and no waiting.
+ *  2. **This browser has verified the number.** Needed for a second phone, a
+ *     cleared browser — or someone who typed a number that is not theirs,
+ *     which is the case this whole feature exists to stop.
+ */
+export async function visitsVisibleTo(
+  phone: string,
+  deviceHash: string | undefined,
+  verified: boolean,
+): Promise<Visit[]> {
+  const wanted = normalisePhone(phone);
+  if (!wanted) return [];
+  if (verified) return currentVisitsByPhone(wanted);
+  if (!deviceHash) return [];
+  return sql<Visit[]>`
+    select * from visits
+    where guest_phone = ${wanted} and device_hash = ${deviceHash} and ${CURRENT}
     order by last_activity_at desc
   `;
 }
@@ -114,15 +146,24 @@ export async function findCurrentVisitAtTable(
  * order's transaction, so superseding a sitting and writing the order either
  * both happen or neither does.
  */
-export async function claimVisit(visitId: string, phone: string, tx: Db = sql): Promise<Visit> {
+export async function claimVisit(
+  visitId: string,
+  phone: string,
+  deviceHash: string | undefined,
+  tx: Db = sql,
+): Promise<Visit> {
   const wanted = normalisePhone(phone);
   const visit = await getVisit(visitId, tx);
   if (!visit) throw new Error(`claimVisit: unknown visit ${visitId}`);
 
-  // First checkout of this sitting — the number claims it.
+  // First checkout of this sitting — the number claims it, and the browser
+  // that placed the order is recorded so it can keep seeing it later.
   if (!visit.guestPhone) {
     const [row] = await tx<Visit[]>`
-      update visits set guest_phone = ${wanted}, last_activity_at = now()
+      update visits
+      set guest_phone = ${wanted},
+          device_hash = coalesce(${deviceHash ?? null}, device_hash),
+          last_activity_at = now()
       where id = ${visit.id}
       returning *
     `;
@@ -131,7 +172,11 @@ export async function claimVisit(visitId: string, phone: string, tx: Db = sql): 
 
   if (visit.guestPhone === wanted) {
     const [row] = await tx<Visit[]>`
-      update visits set last_activity_at = now() where id = ${visit.id} returning *
+      update visits
+      set last_activity_at = now(),
+          device_hash = coalesce(device_hash, ${deviceHash ?? null})
+      where id = ${visit.id}
+      returning *
     `;
     return row;
   }
@@ -141,8 +186,8 @@ export async function claimVisit(visitId: string, phone: string, tx: Db = sql): 
   // the list the moment someone else orders.
   await endVisit(visit.id, "superseded", tx);
   const [row] = await tx<Visit[]>`
-    insert into visits (id, table_id, guest_phone)
-    values (${generateId("visit")}, ${visit.tableId}, ${wanted})
+    insert into visits (id, table_id, guest_phone, device_hash)
+    values (${generateId("visit")}, ${visit.tableId}, ${wanted}, ${deviceHash ?? null})
     returning *
   `;
   return row;

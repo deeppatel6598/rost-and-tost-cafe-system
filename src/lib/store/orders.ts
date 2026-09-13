@@ -3,9 +3,10 @@ import { CANCEL_WINDOW_MS } from "@/lib/order-constants";
 import { PHONE_HELP, isValidPhone, normalisePhone } from "@/lib/phone";
 import { priceCart, PricingError } from "@/lib/pricing";
 import { sql, type Db } from "@/lib/db/sql";
+import { isPhoneVerified } from "@/lib/store/otp";
 import { loadCatalogue } from "@/lib/store/menu";
 import { getAvailability, nextTokenNumber } from "@/lib/store/stalls";
-import { claimVisit, currentVisitsByPhone, getVisit } from "@/lib/store/visits";
+import { claimVisit, getVisit, visitsVisibleTo } from "@/lib/store/visits";
 import type { DiningTable, Stall } from "@/lib/types";
 import type {
   CartLineInput,
@@ -159,15 +160,37 @@ export async function listOrdersForVisits(visitIds: string[]): Promise<SubOrderV
 }
 
 /**
- * The orders a session should see: everything from every current visit
- * carrying its phone number, or just this sitting before the first checkout.
+ * The orders a session should see.
+ *
+ * This is the line phone verification exists for. Spanning every current visit
+ * that carries the number is what lets a student move from table 7 to table 12
+ * without losing their orders — and it is also what let anyone who typed
+ * someone else's number read their token numbers, which is enough to collect
+ * their food at the counter.
+ *
+ * The fan-out is therefore scoped by visitsVisibleTo: sittings this browser
+ * itself opened, plus — once the number is verified — sittings opened on any
+ * other browser. The first half is what keeps the common case free of codes
+ * entirely; the second is what a second phone needs.
+ *
+ * This sitting is always included. Whatever else is or is not visible, a
+ * student can always see the order they just paid for, because that is the
+ * token they collect their food with. Ordering is never gated: verification
+ * buys you other sittings, never the ability to eat.
  */
-export async function listOrdersForSession(visitId: string | undefined): Promise<SubOrderView[]> {
+export async function listOrdersForSession(
+  visitId: string | undefined,
+  deviceHash?: string,
+): Promise<SubOrderView[]> {
   const visit = await getVisit(visitId);
   if (!visit) return [];
   if (!visit.guestPhone) return listOrdersForVisits([visit.id]);
-  const visits = await currentVisitsByPhone(visit.guestPhone);
-  return listOrdersForVisits(visits.map((v) => v.id));
+
+  const verified = await isPhoneVerified(visit.guestPhone, deviceHash);
+  const visits = await visitsVisibleTo(visit.guestPhone, deviceHash, verified);
+  const ids = new Set(visits.map((v) => v.id));
+  ids.add(visit.id);
+  return listOrdersForVisits([...ids]);
 }
 
 /* ── Order creation ──────────────────────────────────────────────────────── */
@@ -182,6 +205,11 @@ export interface CreateOrderArgs {
   guestPhone: string;
   /** The sitting this order is being placed during. */
   visitId: string;
+  /**
+   * The browser placing it. Recorded on the visit so this phone keeps seeing
+   * the order later without anyone having to send an SMS.
+   */
+  deviceHash?: string;
   idempotencyKey: string;
   /** Optional client-computed total, checked for disagreement only. */
   expectedTotal?: number;
@@ -287,7 +315,7 @@ export async function createOrder(args: CreateOrderArgs): Promise<CreateOrderRes
       // Resolve identity only once the order is certain to be written: a
       // different phone number retires the sitting, and that must not happen
       // for an attempt that then fails on price or availability.
-      const visit = await claimVisit(args.visitId, args.guestPhone, tx);
+      const visit = await claimVisit(args.visitId, args.guestPhone, args.deviceHash, tx);
 
       const orderId = generateId("ord");
       const subOrderId = generateId("sub");

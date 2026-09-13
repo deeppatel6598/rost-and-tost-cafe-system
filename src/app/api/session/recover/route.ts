@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
 import { requireTableSession, setTableSessionCookie } from "@/lib/api-auth";
+import { readDeviceHash } from "@/lib/device";
 import { isValidPhone, normalisePhone, PHONE_HELP } from "@/lib/phone";
 import { clientIp, pruneRateLimits, rateLimit } from "@/lib/rate-limit";
 import { listOrdersForVisits } from "@/lib/store/orders";
+import { verifyChallenge } from "@/lib/store/otp";
 import { findCurrentVisitAtTable, touchVisit } from "@/lib/store/visits";
 
 export const dynamic = "force-dynamic";
@@ -16,13 +18,20 @@ export const dynamic = "force-dynamic";
  *  1. A valid table session, which means they physically scanned that table's
  *     printed code just now.
  *  2. The phone number they checked out with.
- *  3. One of their order tokens, e.g. LP-042.
+ *  3. Proof they hold that number — either a one-time code sent to it, or one
+ *     of their order tokens, e.g. LP-042.
+ *
+ * The code is the stronger of the two and the one the UI offers first: a
+ * student whose browser forgot them often cannot remember LP-042 either. The
+ * token stays as the fallback for when codes cannot be sent, so recovery never
+ * has a single point of failure — a telecom outage must not strand a student
+ * whose food is already cooking.
  *
  * The lookup is scoped to *that table* and to *current* sittings only. There is
  * deliberately no way to search by phone number alone — that would turn a
  * guessable ten-digit number into a way to read strangers' orders from
- * anywhere. Attempts are throttled per session and per IP so the token cannot
- * be brute-forced either.
+ * anywhere. Attempts are throttled per session and per IP so neither factor can
+ * be brute-forced.
  */
 const RECOVER_LIMIT = Number(process.env.RECOVER_RATE_LIMIT_PER_SESSION ?? 6);
 const RECOVER_IP_LIMIT = Number(process.env.RECOVER_RATE_LIMIT_PER_IP ?? 60);
@@ -51,7 +60,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: { phone?: string; tokenNumber?: string };
+  let body: { phone?: string; tokenNumber?: string; code?: string };
   try {
     body = await request.json();
   } catch {
@@ -64,24 +73,43 @@ export async function POST(request: NextRequest) {
   }
 
   const wantedToken = normaliseToken(body.tokenNumber);
-  if (!wantedToken) {
+  const submittedCode = String(body.code ?? "").replace(/\D/g, "");
+  if (!wantedToken && !submittedCode) {
     return NextResponse.json(
-      { error: "Enter the token number from your order, like LP-042.", code: "token_required" },
+      {
+        error: "Enter the code we sent you, or a token number from your order like LP-042.",
+        code: "proof_required",
+      },
       { status: 400 },
     );
   }
 
   const visit = await findCurrentVisitAtTable(session.tableId, phone);
-  const matched =
-    visit &&
-    (await listOrdersForVisits([visit.id])).some((o) => normaliseToken(o.tokenNumber) === wantedToken);
+
+  // The code is checked before the visit lookup is trusted, and its own
+  // five-attempt cap applies — so a wrong code burns the challenge rather than
+  // letting someone keep guessing against a number they do not hold.
+  let proved = false;
+  if (submittedCode) {
+    const checked = await verifyChallenge({
+      phone,
+      deviceHash: readDeviceHash() ?? "",
+      purpose: "recover_session",
+      code: submittedCode,
+    });
+    proved = checked.ok;
+  } else if (visit) {
+    proved = (await listOrdersForVisits([visit.id])).some(
+      (o) => normaliseToken(o.tokenNumber) === wantedToken,
+    );
+  }
 
   // One message for every kind of miss, so this cannot be used to learn which
   // half was right — that is what would make the number worth guessing.
-  if (!visit || !matched) {
+  if (!visit || !proved) {
     return NextResponse.json(
       {
-        error: "No order at this table matches that number and token. Check both, or ask at the counter.",
+        error: "No order at this table matches that. Check the details, or ask at the counter.",
         code: "no_match",
       },
       { status: 404 },
