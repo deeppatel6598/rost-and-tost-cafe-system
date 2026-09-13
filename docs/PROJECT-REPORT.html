@@ -1,0 +1,1138 @@
+<title>SK Canteen Technical Report</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Libre+Franklin:wght@400;500;600;700&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap">
+
+<style>
+  :root {
+    --paper:      #fdfcfb;
+    --sunk:       #f4f1ee;
+    --card:       #ffffff;
+    --ink:        #201b18;
+    --ink-soft:   #4d453f;
+    --muted:      #837a72;
+    --rule:       #e4deda;
+    --rule-soft:  #eeeae6;
+    --accent:     #9d4426;
+    --accent-ink: #8a3c21;
+    --accent-bg:  #fbeee9;
+    --slate:      #3a4a55;
+    --slate-bg:   #eef1f3;
+    --good:       #2d6a4a;
+    --good-bg:    #e7f1ec;
+    --warn:       #8a5a18;
+    --warn-bg:    #f8eede;
+    --stop:       #9a3421;
+    --stop-bg:    #f9e8e3;
+    --shadow:     0 1px 2px rgba(32, 27, 24, .05), 0 10px 30px -16px rgba(32, 27, 24, .25);
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --paper:      #161413;
+      --sunk:       #1d1a19;
+      --card:       #201d1c;
+      --ink:        #f0ebe6;
+      --ink-soft:   #c6bdb5;
+      --muted:      #8f867e;
+      --rule:       #37322f;
+      --rule-soft:  #2a2624;
+      --accent:     #e59878;
+      --accent-ink: #f0b79d;
+      --accent-bg:  #2e211b;
+      --slate:      #a8bcc8;
+      --slate-bg:   #1e2529;
+      --good:       #7cc09d;
+      --good-bg:    #1a2620;
+      --warn:       #d9a85f;
+      --warn-bg:    #2b2317;
+      --stop:       #e39680;
+      --stop-bg:    #2d1c18;
+      --shadow:     0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -16px rgba(0, 0, 0, .7);
+    }
+  }
+
+  :root[data-theme="dark"] {
+    --paper:      #161413;
+    --sunk:       #1d1a19;
+    --card:       #201d1c;
+    --ink:        #f0ebe6;
+    --ink-soft:   #c6bdb5;
+    --muted:      #8f867e;
+    --rule:       #37322f;
+    --rule-soft:  #2a2624;
+    --accent:     #e59878;
+    --accent-ink: #f0b79d;
+    --accent-bg:  #2e211b;
+    --slate:      #a8bcc8;
+    --slate-bg:   #1e2529;
+    --good:       #7cc09d;
+    --good-bg:    #1a2620;
+    --warn:       #d9a85f;
+    --warn-bg:    #2b2317;
+    --stop:       #e39680;
+    --stop-bg:    #2d1c18;
+    --shadow:     0 1px 2px rgba(0, 0, 0, .4), 0 10px 30px -16px rgba(0, 0, 0, .7);
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: "Source Serif 4", Georgia, serif;
+    font-size: 16.5px;
+    line-height: 1.62;
+    padding-inline: 20px;
+    padding-block: 0;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .wrap { max-width: 900px; margin-inline: auto; }
+
+  h1, h2, h3, h4, th, .label, .sans, .pill, .num, nav, .tag {
+    font-family: "Libre Franklin", system-ui, -apple-system, sans-serif;
+  }
+  code, pre, .mono, td.n { font-family: "JetBrains Mono", ui-monospace, Menlo, monospace; }
+
+  /* ── Masthead ─────────────────────────────────────────────────────────── */
+
+  header.masthead { padding-block: 54px 26px; border-bottom: 2px solid var(--ink); display: grid; gap: 14px; }
+
+  .eyebrow {
+    font-family: "Libre Franklin", sans-serif;
+    font-size: 11px; font-weight: 600; letter-spacing: .14em; text-transform: uppercase;
+    color: var(--muted); display: flex; flex-wrap: wrap; gap: 6px 12px;
+  }
+
+  h1 {
+    font-family: "Libre Franklin", sans-serif;
+    font-size: clamp(29px, 6vw, 44px); font-weight: 700; line-height: 1.06;
+    letter-spacing: -.023em; margin: 0; text-wrap: balance;
+  }
+
+  .standfirst { font-size: clamp(16.5px, 2.3vw, 19px); line-height: 1.55; color: var(--ink-soft); margin: 0; max-width: 62ch; }
+
+  .facts {
+    display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 1px; background: var(--rule); border: 1px solid var(--rule);
+    border-radius: 3px; overflow: hidden; margin-top: 10px;
+  }
+  .fact { background: var(--card); padding: 13px 14px; display: grid; gap: 2px; }
+  .fact .num { font-size: 21px; font-weight: 600; letter-spacing: -.02em; font-variant-numeric: tabular-nums; line-height: 1.15; }
+  .fact .label { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); }
+
+  /* ── Contents ─────────────────────────────────────────────────────────── */
+
+  nav.toc { padding-block: 26px; border-bottom: 1px solid var(--rule-soft); }
+  nav.toc ol { list-style: none; margin: 0; padding: 0; columns: 2; column-gap: 28px; max-width: none; }
+  nav.toc li { margin: 0 0 5px; break-inside: avoid; font-size: 14px; display: flex; gap: 9px; }
+  nav.toc .n { color: var(--accent); font-variant-numeric: tabular-nums; min-width: 1.4em; font-weight: 600; font-size: 13px; }
+  nav.toc a { color: var(--ink-soft); text-decoration: none; }
+  nav.toc a:hover { color: var(--accent-ink); text-decoration: underline; }
+  @media (max-width: 560px) { nav.toc ol { columns: 1; } }
+
+  /* ── Sections ─────────────────────────────────────────────────────────── */
+
+  section { padding-block: 40px; border-bottom: 1px solid var(--rule-soft); scroll-margin-top: 16px; }
+  section:last-of-type { border-bottom: 0; }
+
+  h2 {
+    font-size: clamp(20px, 3.3vw, 26px); font-weight: 700; letter-spacing: -.016em;
+    line-height: 1.16; margin: 0 0 6px; text-wrap: balance;
+    display: flex; gap: 12px; align-items: baseline;
+  }
+  h2 .n { color: var(--accent); font-size: .62em; font-weight: 600; font-variant-numeric: tabular-nums; }
+
+  h3 { font-size: 16.5px; font-weight: 600; margin: 26px 0 6px; letter-spacing: -.006em; }
+  h4 { font-size: 13px; font-weight: 600; margin: 18px 0 5px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+
+  .deck { color: var(--muted); font-size: 14.5px; margin: 0 0 20px; max-width: 64ch; }
+
+  p { margin: 0 0 13px; max-width: 68ch; }
+  p:last-child { margin-bottom: 0; }
+  ul, ol.plain { margin: 0 0 13px; padding-left: 20px; max-width: 68ch; }
+  li { margin-bottom: 6px; }
+  li:last-child { margin-bottom: 0; }
+  strong { font-weight: 600; }
+
+  a { color: var(--accent-ink); text-underline-offset: 2px; text-decoration-thickness: 1px; }
+  a:focus-visible { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 2px; }
+
+  code {
+    font-size: .84em; background: var(--sunk); border: 1px solid var(--rule-soft);
+    border-radius: 3px; padding: .1em .34em; color: var(--ink-soft); word-break: break-word;
+  }
+
+  pre {
+    margin: 0 0 16px; padding: 15px 17px; background: var(--sunk);
+    border: 1px solid var(--rule-soft); border-radius: 3px;
+    overflow-x: auto; font-size: 12.4px; line-height: 1.62; color: var(--ink-soft);
+  }
+  pre code { background: none; border: 0; padding: 0; font-size: inherit; color: inherit; }
+  pre .c { color: var(--muted); }
+  pre .k { color: var(--accent-ink); }
+
+  /* ── Tables ───────────────────────────────────────────────────────────── */
+
+  .scroller { overflow-x: auto; margin: 6px 0 18px; border: 1px solid var(--rule); border-radius: 3px; background: var(--card); }
+  table { border-collapse: collapse; width: 100%; min-width: 540px; font-size: 14px; }
+  th {
+    text-align: left; font-size: 10.5px; font-weight: 600; letter-spacing: .085em;
+    text-transform: uppercase; color: var(--muted); padding: 11px 13px;
+    border-bottom: 1px solid var(--rule); background: var(--sunk); white-space: nowrap; vertical-align: bottom;
+  }
+  td { padding: 11px 13px; border-bottom: 1px solid var(--rule-soft); vertical-align: top; line-height: 1.45; }
+  tbody tr:last-child td { border-bottom: 0; }
+  td.n { font-variant-numeric: tabular-nums; white-space: nowrap; font-size: 12.8px; }
+  td.name { font-family: "JetBrains Mono", monospace; font-size: 12.8px; white-space: nowrap; color: var(--accent-ink); }
+  td.k { font-family: "Libre Franklin", sans-serif; font-weight: 600; white-space: nowrap; }
+
+  .pill {
+    display: inline-block; font-size: 10px; font-weight: 600; letter-spacing: .06em;
+    text-transform: uppercase; padding: 2.5px 7px; border-radius: 2px; white-space: nowrap;
+  }
+  .pill.done { background: var(--good-bg); color: var(--good); }
+  .pill.todo { background: var(--warn-bg); color: var(--warn); }
+  .pill.block { background: var(--stop-bg); color: var(--stop); }
+  .pill.pick { background: var(--accent-bg); color: var(--accent-ink); }
+
+  /* ── Structure tree ───────────────────────────────────────────────────── */
+
+  .tree {
+    font-family: "JetBrains Mono", monospace; font-size: 12.4px; line-height: 1.75;
+    background: var(--card); border: 1px solid var(--rule); border-radius: 3px;
+    padding: 16px 18px; overflow-x: auto; margin: 6px 0 18px; white-space: pre;
+    color: var(--ink-soft);
+  }
+  .tree b { color: var(--ink); font-weight: 600; }
+  .tree i { color: var(--muted); font-style: normal; }
+
+  /* ── Flow ─────────────────────────────────────────────────────────────── */
+
+  ol.flow { list-style: none; margin: 6px 0 18px; padding: 0; counter-reset: st; display: grid; gap: 0; }
+  ol.flow li {
+    display: grid; grid-template-columns: 30px 1fr; gap: 0 14px; align-items: baseline;
+    padding: 13px 0; border-top: 1px solid var(--rule-soft); margin: 0; counter-increment: st;
+  }
+  ol.flow li:first-child { border-top: 0; }
+  ol.flow li::before {
+    content: counter(st); font-family: "JetBrains Mono", monospace; font-size: 12px;
+    color: var(--accent); font-variant-numeric: tabular-nums;
+  }
+  ol.flow .t { font-family: "Libre Franklin", sans-serif; font-weight: 600; font-size: 15px; }
+  ol.flow p { grid-column: 2; margin: 3px 0 0; font-size: 14.2px; color: var(--ink-soft); }
+
+  /* ── Callouts ─────────────────────────────────────────────────────────── */
+
+  .note {
+    border-left: 3px solid var(--slate); background: var(--slate-bg);
+    padding: 14px 17px; border-radius: 0 3px 3px 0; margin: 6px 0 18px;
+  }
+  .note.warn { border-left-color: var(--warn); background: var(--warn-bg); }
+  .note p { margin: 0; font-size: 14.8px; }
+  .note .label { font-size: 10.5px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--muted); display: block; margin-bottom: 4px; }
+  .note.warn .label { color: var(--warn); }
+
+  footer { padding-block: 28px 60px; color: var(--muted); font-size: 13px; }
+  footer p { max-width: 70ch; }
+
+  @media (max-width: 520px) {
+    ol.flow li { grid-template-columns: 24px 1fr; gap: 0 10px; }
+  }
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; } }
+</style>
+
+<div class="wrap">
+
+<header class="masthead">
+  <div class="eyebrow">
+    <span>Technical report</span><span>·</span>
+    <span>Sakarchand Patel University Canteen</span><span>·</span>
+    <span>13 September 2026</span>
+  </div>
+  <h1>A QR ordering system for a four-stall college canteen</h1>
+  <p class="standfirst">
+    Students scan the code on their table, order from any of four independent stalls, pay by UPI or
+    cash, and collect by token number. This document covers the language, the architecture, the data
+    model, every platform choice and why it was made, and what is still outstanding.
+  </p>
+  <div class="facts">
+    <div class="fact"><span class="num">TypeScript</span><span class="label">Language</span></div>
+    <div class="fact"><span class="num">12,733</span><span class="label">Lines of source</span></div>
+    <div class="fact"><span class="num">134</span><span class="label">Source files</span></div>
+    <div class="fact"><span class="num">17</span><span class="label">Database tables</span></div>
+    <div class="fact"><span class="num">29</span><span class="label">API endpoints</span></div>
+    <div class="fact"><span class="num">227</span><span class="label">Automated checks</span></div>
+  </div>
+</header>
+
+<nav class="toc">
+  <ol>
+    <li><span class="n">1</span><a href="#problem">The problem and the product</a></li>
+    <li><span class="n">2</span><a href="#language">Language and technology stack</a></li>
+    <li><span class="n">3</span><a href="#architecture">Architecture</a></li>
+    <li><span class="n">4</span><a href="#structure">Project structure</a></li>
+    <li><span class="n">5</span><a href="#data">The data model</a></li>
+    <li><span class="n">6</span><a href="#manage">How data is managed</a></li>
+    <li><span class="n">7</span><a href="#platform">Platform choices</a></li>
+    <li><span class="n">8</span><a href="#identity">Identity: the hardest problem</a></li>
+    <li><span class="n">9</span><a href="#security">Security</a></li>
+    <li><span class="n">10</span><a href="#design">Interface and design system</a></li>
+    <li><span class="n">11</span><a href="#testing">Testing</a></li>
+    <li><span class="n">12</span><a href="#status">Status and remaining work</a></li>
+    <li><span class="n">13</span><a href="#run">Running it</a></li>
+  </ol>
+</nav>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="problem">
+  <h2><span class="n">01</span> The problem and the product</h2>
+  <p class="deck">What exists today, and what this replaces.</p>
+
+  <p>
+    The canteen at Sakarchand Patel University is one hall shared by <strong>four independent
+    businesses</strong>. They share the room, the tables and the students — and nothing else. Separate
+    menus, separate staff, separate UPI accounts, separate cash.
+  </p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Stall</th><th>Sells</th><th>Token prefix</th><th>Menu layout</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Jay Bhavani</td><td>Gujarati snacks, thali</td><td class="name">JB</td><td>Vertical category rail</td></tr>
+        <tr><td class="k">La Pinos Pizza</td><td>Pizza, pasta, sides</td><td class="name">LP</td><td>Offer-led grid</td></tr>
+        <tr><td class="k">Tea Post</td><td>Chai, maggi, bun maska</td><td class="name">TP</td><td>Hero image and search</td></tr>
+        <tr><td class="k">The Thick Shake</td><td>Shakes, cold coffee</td><td class="name">TS</td><td>Hero image and search</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    At lunch the hall fills, four queues form, and students spend most of their break standing in
+    them. The system replaces the queue, not the counter: an order is placed from the table, and the
+    student still walks up when their token is called. <strong>Nothing is delivered.</strong> That single
+    decision removes an entire category of complexity — no runners, no addresses, no delivery states.
+  </p>
+
+  <h3>What it deliberately does not do</h3>
+  <p>
+    Scope discipline was a design goal, not an omission. The system has <strong>no delivery, no guest
+    accounts or logins, no payment gateway, no single checkout spanning multiple stalls, and no
+    loyalty, coupons or ratings.</strong> Each of those would have added a subsystem; none of them
+    solves the queue.
+  </p>
+  <p>
+    Payment is the sharpest example. Integrating a gateway like Razorpay would mean settlement
+    accounts, refunds and reconciliation for four separate businesses. Instead the student pays the
+    stall's own UPI ID directly through a deep link, and <strong>a member of that stall's staff
+    confirms receipt in their own UPI app</strong> before the order moves forward. The money never
+    touches this system. That is a deliberate trade of automation for a much smaller trusted surface.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="language">
+  <h2><span class="n">02</span> Language and technology stack</h2>
+  <p class="deck">One language across the whole system, and the reasoning behind each dependency.</p>
+
+  <p>
+    The project is written entirely in <strong>TypeScript</strong> — the browser code, the server code,
+    the database queries and the seed scripts. There is no second language anywhere in the stack. That
+    matters more than it sounds: a type defined once in <code>src/lib/types.ts</code> is the same type
+    in the React component, in the API route and in the SQL result, so a mistake about the shape of an
+    order is caught at compile time rather than at a counter during lunch.
+  </p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Layer</th><th>Technology</th><th>Version</th><th>Why this one</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="k">Language</td><td class="name">TypeScript</td><td class="n">5.6.3</td>
+          <td>Static types across client and server. Compile step is <code>tsc --noEmit</code> plus Next's own build.</td>
+        </tr>
+        <tr>
+          <td class="k">Runtime</td><td class="name">Node.js</td><td class="n">22.x</td>
+          <td>Server-side JavaScript runtime. Provides the <code>crypto</code> primitives used for HMAC, scrypt and random tokens.</td>
+        </tr>
+        <tr>
+          <td class="k">Framework</td><td class="name">Next.js</td><td class="n">14.2.35</td>
+          <td>App Router. Pages and API endpoints live in one project, so there is no separate backend to deploy or keep in sync.</td>
+        </tr>
+        <tr>
+          <td class="k">UI library</td><td class="name">React</td><td class="n">18.3.1</td>
+          <td>Server Components by default; <code>"use client"</code> only where interaction demands it, which keeps the phone-side bundle small.</td>
+        </tr>
+        <tr>
+          <td class="k">Styling</td><td class="name">Tailwind CSS</td><td class="n">3.4.14</td>
+          <td>Utility classes bound to CSS custom properties, so per-stall theming is a data attribute rather than four stylesheets.</td>
+        </tr>
+        <tr>
+          <td class="k">Database</td><td class="name">PostgreSQL</td><td class="n">17</td>
+          <td>Chosen for transactions specifically — see §6. Hosted on Supabase, Mumbai region.</td>
+        </tr>
+        <tr>
+          <td class="k">DB driver</td><td class="name">postgres (postgres.js)</td><td class="n">3.4.9</td>
+          <td>Tagged-template SQL with automatic parameterisation. No ORM, no code generation step.</td>
+        </tr>
+        <tr>
+          <td class="k">Sessions</td><td class="name">jose</td><td class="n">5.9.6</td>
+          <td>Signed JWTs for staff and table sessions. Works in both the Node and Edge runtimes, which Next's middleware requires.</td>
+        </tr>
+        <tr>
+          <td class="k">QR codes</td><td class="name">qrcode / jsqr</td><td class="n">1.5.4 / 1.4.0</td>
+          <td>Generating printable table stickers, and reading a code from the camera on the in-app scan screen.</td>
+        </tr>
+        <tr>
+          <td class="k">Animation</td><td class="name">framer-motion</td><td class="n">11.11.17</td>
+          <td>Bottom sheets and transitions. Respects <code>prefers-reduced-motion</code>.</td>
+        </tr>
+        <tr>
+          <td class="k">Scripts</td><td class="name">tsx</td><td class="n">4.23.13</td>
+          <td>Runs the TypeScript seed script directly, so seed data shares the app's types.</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Why no ORM</h3>
+  <p>
+    Prisma and Drizzle were both considered and rejected. The most important operations in this system
+    — the sold-out race, the token sequence, order creation — are <strong>explicit SQL with row-level
+    locking</strong>. An ORM would either hide that behind an abstraction or force an escape hatch back
+    to raw SQL for exactly the queries that matter most. <code>postgres.js</code> gives parameterised
+    queries (so SQL injection is structurally impossible) while leaving the SQL readable:
+  </p>
+<pre><code><span class="c">// Values in ${...} are sent as bound parameters, never string-concatenated.</span>
+<span class="k">const</span> items = <span class="k">await</span> tx&lt;MenuItem[]&gt;`
+  select * from menu_items where id in ${tx(unique)} order by id <span class="k">for update</span>
+`;</code></pre>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="architecture">
+  <h2><span class="n">03</span> Architecture</h2>
+  <p class="deck">Four layers, and a rule about which may talk to which.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Layer</th><th>Lives in</th><th>Responsibility</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Pages &amp; components</td><td class="name">src/app, src/components</td><td>Rendering and interaction. Never touches the database directly.</td></tr>
+        <tr><td class="k">API routes</td><td class="name">src/app/api</td><td>Authentication, input validation, rate limiting, HTTP shape. Holds no business rules.</td></tr>
+        <tr><td class="k">Store</td><td class="name">src/lib/store</td><td>All business rules and all SQL. Transactions begin and end here.</td></tr>
+        <tr><td class="k">Database</td><td class="name">PostgreSQL</td><td>Constraints, foreign keys, row locks. The final arbiter of correctness.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    The rule is that <strong>a rule lives in exactly one place</strong>. Tenancy is the clearest case:
+    every stall-scoped store function takes a <code>stallId</code> and includes it in the
+    <code>WHERE</code> clause, so even if an API route forgot to check, one stall still could not read
+    or edit another's data. The route layer is a gate, not the wall.
+  </p>
+
+  <h3>Request lifecycle — placing an order</h3>
+  <p>This is the most involved path in the system, so it is worth following end to end.</p>
+
+  <ol class="flow">
+    <li>
+      <span class="t">Student scans the table QR code</span>
+      <p><code>GET /t/&lt;qrToken&gt;</code>. The token is an HMAC of the table number, verified server-side. A table number is never accepted from a URL or query parameter.</p>
+    </li>
+    <li>
+      <span class="t">A session cookie is issued</span>
+      <p>A signed JWT holding <code>{ tableId, tableNumber, visitId }</code>, httpOnly, four-hour lifetime. A visit row is opened for this sitting.</p>
+    </li>
+    <li>
+      <span class="t">Menu is served and a cart is built</span>
+      <p>Cart state lives in React context on the phone. It carries item IDs and quantities — never prices.</p>
+    </li>
+    <li>
+      <span class="t">Checkout posts to the server</span>
+      <p><code>POST /api/orders</code> with a client-generated <code>Idempotency-Key</code> header, the line items, the payment method and a mandatory phone number.</p>
+    </li>
+    <li>
+      <span class="t">The route validates and throttles</span>
+      <p>Session, phone format, idempotency key, rate limits. A request that replays an already-written key skips the limiter entirely, so a retry on bad wifi is never answered with "too many orders".</p>
+    </li>
+    <li>
+      <span class="t">One database transaction does everything else</span>
+      <p>Lock the menu rows, re-check availability, <strong>recompute every price from the database</strong>, claim the visit, increment the stall's token sequence, write the order, sub-order, line items and idempotency key. All of it commits together or none of it does.</p>
+    </li>
+    <li>
+      <span class="t">The student gets a token and a payment route</span>
+      <p>A token number like <code>LP-042</code>, a random <code>public_token</code> for the status page, and — for UPI — a deep link into their payment app.</p>
+    </li>
+    <li>
+      <span class="t">Stall staff confirm and advance</span>
+      <p>Payment is confirmed by a human checking their own UPI app. Status moves PLACED → ACCEPTED → PREPARING → READY → COMPLETED, one tap per step, each guarded by a row lock.</p>
+    </li>
+  </ol>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="structure">
+  <h2><span class="n">04</span> Project structure</h2>
+  <p class="deck">134 source files, organised by layer rather than by feature.</p>
+
+<div class="tree"><b>src/</b>
+├── <b>app/</b>                          <i>routes — pages and API, Next.js App Router</i>
+│   ├── page.tsx                  <i>landing</i>
+│   ├── layout.tsx                <i>root layout, fonts, metadata</i>
+│   ├── error.tsx                 <i>render-failure boundary</i>
+│   ├── global-error.tsx          <i>root-layout failure, self-styled</i>
+│   ├── not-found.tsx             <i>404</i>
+│   ├── instrumentation.ts        <i>startup configuration checks</i>
+│   ├── middleware.ts             <i>admin route gate (Edge runtime)</i>
+│   ├── t/[qrToken]/              <i>QR entry point — verifies and seats</i>
+│   ├── scan/                     <i>in-app camera scanner</i>
+│   ├── order/                    <i>stall picker → menu → checkout</i>
+│   ├── orders/                   <i>"my orders" list</i>
+│   ├── status/[publicToken]/     <i>live order status</i>
+│   ├── table-not-found/          <i>bad or forged QR code</i>
+│   └── <b>api/</b>                      <i>29 endpoints</i>
+│       ├── orders/               <i>create, read, guest cancel, mark paid</i>
+│       ├── my-orders/            <i>server-side order list</i>
+│       ├── session/              <i>read, recover, end</i>
+│       ├── verify/               <i>OTP start and check</i>
+│       ├── stalls/               <i>public stall and menu reads</i>
+│       ├── auth/                 <i>staff login, logout, me</i>
+│       ├── admin/                <i>stall-scoped: queue, menu, tables, today</i>
+│       └── super/                <i>supervisor: overview, staff, audit</i>
+│
+├── <b>components/</b>                   <i>67 React components</i>
+│   ├── ui/                       <i>Button, Icon, BottomSheet, StatusChip, …</i>
+│   ├── order/                    <i>guest flow, incl. menu/ layouts per stall</i>
+│   ├── admin/                    <i>staff queue, menu editor, QR printing</i>
+│   └── scan/                     <i>camera scanner</i>
+│
+├── <b>lib/</b>                          <i>business logic and infrastructure</i>
+│   ├── <b>store/</b>                    <i>all SQL and all business rules</i>
+│   │   ├── orders.ts             <i>order lifecycle, the core transaction</i>
+│   │   ├── visits.ts             <i>who is ordering — the identity model</i>
+│   │   ├── menu.ts               <i>catalogue, sold-out locking</i>
+│   │   ├── stalls.ts             <i>stall settings, token sequence, hours</i>
+│   │   ├── otp.ts                <i>phone verification lifecycle</i>
+│   │   ├── staff.ts, tables.ts, audit.ts, patch.ts
+│   ├── <b>db/</b>sql.ts                 <i>Postgres client and pool configuration</i>
+│   ├── <b>otp/</b>                      <i>pluggable code-delivery channels</i>
+│   │   ├── channel.ts            <i>the 3-method interface</i>
+│   │   ├── console-channel.ts    <i>development stub</i>
+│   │   └── msg91-channel.ts      <i>production SMS provider</i>
+│   ├── pricing.ts                <i>server-side price calculation</i>
+│   ├── table-token.ts            <i>HMAC QR tokens</i>
+│   ├── auth.ts, api-auth.ts      <i>JWT sessions, tenancy enforcement</i>
+│   ├── secret.ts                 <i>AUTH_SECRET resolution, fails closed</i>
+│   ├── device.ts                 <i>long-lived device cookie</i>
+│   ├── rate-limit.ts             <i>fixed-window limiter</i>
+│   ├── password.ts               <i>scrypt hashing</i>
+│   ├── phone.ts, upi.ts, format.ts, types.ts
+│   └── qrcode.ts
+│
+├── <b>context/</b>                      <i>React cart context</i>
+└── <b>data/</b>
+    ├── canteen.ts                <i>branding constants, client-safe</i>
+    └── seed.ts                   <i>seed data (server only)</i>
+
+<b>db/migrations/</b>
+├── 001_init.sql                  <i>14 tables, indexes, constraints</i>
+├── 002_enable_rls.sql            <i>row-level security, deny by default</i>
+└── 003_phone_verification.sql    <i>3 more tables + visits.device_hash</i>
+
+<b>scripts/</b>seed-db.ts               <i>4 stalls, 40 items, 24 tables, 6 staff</i></div>
+
+  <div class="note">
+    <span class="label">A structural decision worth explaining</span>
+    <p>
+      <code>data/canteen.ts</code> exists separately from <code>data/seed.ts</code> because
+      <code>seed.ts</code> imports password hashing and the QR signing key. A client component that
+      imported one string constant from it would drag <code>scrypt</code> and the signing secret into
+      the browser bundle. That actually happened during development and produced a blank page whose
+      server-rendered HTML was perfectly correct — a good illustration of why module boundaries in a
+      full-stack framework are a security concern, not just tidiness.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="data">
+  <h2><span class="n">05</span> The data model</h2>
+  <p class="deck">17 tables across five groups. Every foreign key is declared and enforced by Postgres.</p>
+
+  <h4>Tenancy and catalogue</h4>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Table</th><th>Cols</th><th>Holds</th></tr></thead>
+      <tbody>
+        <tr><td class="name">stalls</td><td class="n">19</td><td>The four businesses: UPI ID, payee name, GSTIN, opening hours, service mode, cash/UPI flags, menu layout, token prefix and <strong>token sequence counter</strong>.</td></tr>
+        <tr><td class="name">menu_categories</td><td class="n">5</td><td>Sections within a stall's menu, ordered.</td></tr>
+        <tr><td class="name">menu_items</td><td class="n">12</td><td>Dishes: price in rupees, veg flag, availability, prep minutes, sort order.</td></tr>
+        <tr><td class="name">item_variants</td><td class="n">6</td><td>Sizes — "Regular", "Large" — as a price delta on the base item.</td></tr>
+        <tr><td class="name">item_addon_groups</td><td class="n">7</td><td>Choice groups with <code>min_select</code> / <code>max_select</code> / <code>is_required</code>.</td></tr>
+        <tr><td class="name">item_addons</td><td class="n">5</td><td>Individual extras, each a price delta.</td></tr>
+        <tr><td class="name">dining_tables</td><td class="n">4</td><td>24 physical tables, each with its HMAC <code>qr_token</code>.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Ordering</h4>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Table</th><th>Cols</th><th>Holds</th></tr></thead>
+      <tbody>
+        <tr><td class="name">visits</td><td class="n">8</td><td>One student's sitting at one table: phone, device hash, opened/last-activity timestamps, close reason. See §8.</td></tr>
+        <tr><td class="name">orders</td><td class="n">7</td><td>One checkout. Carries the random <code>public_token</code> used by the status URL, and links to both table and visit.</td></tr>
+        <tr><td class="name">sub_orders</td><td class="n">21</td><td>The per-stall portion of an order — the unit staff actually work. Token number, status, payment status, money, and a timestamp for every state transition.</td></tr>
+        <tr><td class="name">sub_order_items</td><td class="n">10</td><td>Line items with <strong>snapshots</strong> of name, variant and unit price, plus addons as JSONB.</td></tr>
+        <tr><td class="name">idempotency_keys</td><td class="n">3</td><td>Primary key on the client-generated key. A duplicate insert is what makes a double-tap safe.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note">
+    <span class="label">Why line items store snapshots</span>
+    <p>
+      If a stall raises the price of a pizza tomorrow, yesterday's receipt must not change. So each
+      line stores the name, variant name and unit price <em>as they were at the moment of ordering</em>,
+      alongside the <code>item_id</code> reference. Menu items are also soft-deleted
+      (<code>is_active = false</code>) rather than removed, so order history never points at a missing row.
+    </p>
+  </div>
+
+  <h4>Identity and verification</h4>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Table</th><th>Cols</th><th>Holds</th></tr></thead>
+      <tbody>
+        <tr><td class="name">phone_challenges</td><td class="n">12</td><td>A code in flight: HMAC of the code, purpose, device hash, attempt count, send count, expiry, consumed-at.</td></tr>
+        <tr><td class="name">verified_phones</td><td class="n">4</td><td>(phone, device hash) pairs with a 90-day expiry. The reason a student verifies once, not once per order.</td></tr>
+        <tr><td class="name">otp_sends</td><td class="n">6</td><td>The spend ledger. Every code sent is one row; the rate ceilings are counted from here.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Staff and audit</h4>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Table</th><th>Cols</th><th>Holds</th></tr></thead>
+      <tbody>
+        <tr><td class="name">staff_users</td><td class="n">7</td><td>Name, phone, scrypt password hash, role (<code>stall_staff</code> / <code>stall_owner</code> / <code>super_admin</code>), stall, active flag.</td></tr>
+        <tr><td class="name">audit_logs</td><td class="n">9</td><td>Actor, action, entity, before/after JSON, timestamp — for every payment confirmation, refund, cancellation, price change and UPI ID change.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The order shape, and why it is split in two</h3>
+  <p>
+    An <code>order</code> is one checkout; a <code>sub_order</code> is the part of it belonging to one
+    stall. Today a student checks out from one stall at a time, so there is exactly one sub-order per
+    order — but the split is what would let a single basket span stalls later, and more immediately it
+    is the right unit for the kitchen. <strong>Staff work sub-orders</strong>: each has its own token
+    number, its own status machine and its own payment state, because the four stalls are separate
+    businesses and one stall's pizza being ready says nothing about another's chai.
+  </p>
+
+<pre><code>visits ──┐
+         └─&lt; orders ──&lt; sub_orders ──&lt; sub_order_items
+                 │            │
+dining_tables ───┘            └── stalls
+
+<span class="c">-- Money on a sub_order</span>
+subtotal    <span class="c">-- sum of line_total</span>
+tax_amount  <span class="c">-- GST *extracted from* the subtotal, only if the stall has a GSTIN</span>
+total       <span class="c">-- equals subtotal: menu prices are what the student pays</span></code></pre>
+
+  <p>
+    Indian menu prices are tax-inclusive, so GST at 5% is computed <em>backwards out of</em> the price
+    for the receipt rather than added on top. This is asserted in the test suite, because getting it
+    the other way round would overcharge every student at the one GST-registered stall.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="manage">
+  <h2><span class="n">06</span> How data is managed</h2>
+  <p class="deck">The part of the design that drove the database choice.</p>
+
+  <h3>Why a relational database, and why transactions specifically</h3>
+  <p>
+    The system was first built against an in-memory store. That works until two students tap
+    <em>Order</em> in the same millisecond. Three problems appear at once, and all three are
+    transaction problems:
+  </p>
+  <ul>
+    <li>
+      <strong>The sold-out race.</strong> Two students order the last plate. Both read "available",
+      both succeed, one goes hungry. The fix is <code>SELECT … FOR UPDATE</code> on the menu row
+      <em>inside</em> the writing transaction: the second transaction blocks, then reads the row the
+      first one left behind and fails its check.
+    </li>
+    <li>
+      <strong>The token sequence.</strong> Two orders must never be given token LP-042. The counter is
+      incremented with <code>UPDATE stalls SET token_seq = token_seq + 1 … RETURNING token_seq</code> —
+      a single statement, so there is no window between reading and writing.
+    </li>
+    <li>
+      <strong>Partial writes.</strong> An order is four inserts across four tables. A crash between
+      them would leave a sub-order with no line items, which is an order nobody can cook. Wrapping
+      them in one transaction makes that state impossible.
+    </li>
+  </ul>
+
+  <p>
+    None of this is achievable in application code alone once more than one server process exists — and
+    on serverless hosting there are always several. The database has to be the arbiter, which is why
+    PostgreSQL rather than a document store.
+  </p>
+
+<pre><code><span class="c">// src/lib/store/orders.ts — everything from the availability check</span>
+<span class="c">// to the last insert happens inside one transaction.</span>
+<span class="k">return await</span> sql.begin(<span class="k">async</span> (tx) =&gt; {
+  <span class="k">const</span> catalogue = <span class="k">await</span> loadCatalogue(itemIds, tx);   <span class="c">// locks the rows</span>
+  priced       = priceCart(stall, args.lines, catalogue); <span class="c">// prices from the DB</span>
+  <span class="k">const</span> visit  = <span class="k">await</span> claimVisit(args.visitId, phone, deviceHash, tx);
+  <span class="k">const</span> token  = <span class="k">await</span> nextTokenNumber(stall.id, tx);
+  <span class="c">// … insert orders, sub_orders, sub_order_items, idempotency_keys</span>
+});</code></pre>
+
+  <h3>Migrations</h3>
+  <p>
+    Schema changes are plain, numbered SQL files in <code>db/migrations/</code>, applied in order and
+    written to be re-runnable (<code>create table if not exists</code>, <code>add column if not
+    exists</code>). There are three so far. Keeping them as SQL rather than a framework's migration
+    DSL means they can be read, reviewed and run by anyone who knows SQL, including a DBA who has
+    never seen this codebase.
+  </p>
+
+  <h3>Connection management</h3>
+  <p>
+    This is the detail most likely to break a deployment. A direct PostgreSQL connection allows roughly
+    sixty clients; a serverless platform starts a new function instance per concurrent request and will
+    exhaust that during a single lunch rush. So the app connects through Supabase's
+    <strong>transaction-mode pooler on port 6543</strong>, not the direct port 5432, and the client is
+    configured to match:
+  </p>
+
+<pre><code><span class="c">// src/lib/db/sql.ts</span>
+postgres(connectionString, {
+  transform: postgres.camel,      <span class="c">// snake_case columns → camelCase objects</span>
+  max: isServerless ? 1 : 10,     <span class="c">// one connection per instance when serverless</span>
+  prepare: false,                 <span class="c">// required by the transaction-mode pooler</span>
+  idle_timeout: 20,
+  connect_timeout: 10,
+});</code></pre>
+
+  <p>
+    <code>prepare: false</code> is not optional: the transaction pooler multiplexes clients across
+    backends, so prepared statements cached on one backend would not exist on the next.
+  </p>
+
+  <h3>Row-level security</h3>
+  <p>
+    RLS is enabled on all 17 tables <strong>with no policies granted</strong>. That is deliberate and it
+    is the strictest setting, not the loosest: with RLS on and no policy, the anonymous and
+    authenticated Supabase roles can read nothing at all. The application connects as the owner role,
+    which bypasses RLS, and every access decision is made in the store layer where it can be tested.
+    If Supabase's auto-generated REST API is ever exposed, it returns nothing.
+  </p>
+
+  <h3>Caching and state</h3>
+  <p>
+    There is no cache layer, and that is a considered choice for this scale. A canteen has four stalls
+    and perhaps 300 orders a day; a Redis dependency would add an operational component to save
+    milliseconds nobody will notice. Client state is minimal: the cart lives in React context, and
+    <code>localStorage</code> holds only status links as a convenience — the server is authoritative
+    for the order list, which is what makes closing a browser tab harmless.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="platform">
+  <h2><span class="n">07</span> Platform choices</h2>
+  <p class="deck">What each piece runs on, what the alternatives were, and what it costs.</p>
+
+  <h3>Database hosting</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Option</th><th>Verdict</th><th>Reasoning</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="k">Supabase</td><td><span class="pill pick">Chosen</span></td>
+          <td>Managed PostgreSQL 17 in <strong>ap-south-1 (Mumbai)</strong> — latency matters when staff tap through a queue. Includes a transaction pooler, backups and a SQL console. Free tier is sufficient at this scale.</td>
+        </tr>
+        <tr><td class="k">Neon</td><td>Viable</td><td>Comparable serverless Postgres, but no Indian region at the time of choosing, which adds a round trip to every query.</td></tr>
+        <tr><td class="k">Self-hosted Postgres</td><td>Rejected</td><td>Cheapest in rupees, most expensive in attention. Backups, patching and uptime become a student's problem during exam week.</td></tr>
+        <tr><td class="k">Firebase / MongoDB</td><td>Rejected</td><td>The core requirements are multi-row transactions and row locks. A document store would mean reimplementing them in application code, badly.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p class="mono" style="font-size:13px; color:var(--muted)">
+    Project <code>vzrhqwbuephbyczyrdim</code> · PostgreSQL 17 · ap-south-1 · 17 tables · RLS enabled · seeded and healthy
+  </p>
+
+  <h3>Application hosting</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Option</th><th>Verdict</th><th>Reasoning</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Vercel</td><td><span class="pill pick">Recommended</span></td><td>Built by the Next.js authors; zero-configuration deploys from Git. Choose the Mumbai region so the app sits beside the database.</td></tr>
+        <tr><td class="k">Netlify</td><td>Viable</td><td>Supported — the code already detects it for pool sizing. Slightly more configuration for the App Router.</td></tr>
+        <tr><td class="k">A VPS with Node</td><td>Viable</td><td>Removes the serverless connection problem entirely and lets the in-memory rate limiter be accurate. Costs uptime management.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="note warn">
+    <span class="label">Deployment requirement</span>
+    <p>
+      HTTPS is mandatory. Session cookies are set <code>Secure</code> in production, and a table QR
+      code is scanned on open campus wi-fi where the first plaintext request is the one worth stealing.
+      HSTS is set for two years.
+    </p>
+  </div>
+
+  <h3>SMS for phone verification</h3>
+  <p>
+    In India this choice is governed less by price than by <strong>TRAI's DLT mandate</strong>: every
+    SMS sender must register an entity, a six-character header and each message template on an
+    operator-run portal before a single transactional message will deliver. Roughly ₹5,900 + GST, one
+    time, approved in one to three working days.
+  </p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Provider</th><th>Per code</th><th>DLT</th><th>Reaches</th><th>Verdict</th></tr></thead>
+      <tbody>
+        <tr><td class="k">MSG91</td><td class="n">₹0.15–0.25</td><td>Required</td><td>Every phone</td><td><span class="pill pick">Chosen</span> Indian provider, INR billing, no forex surcharge.</td></tr>
+        <tr><td class="k">Fast2SMS</td><td class="n">₹0.15–0.25</td><td>Required</td><td>Every phone</td><td>Cheaper to start, thinner API and support.</td></tr>
+        <tr><td class="k">Firebase Phone Auth</td><td class="n">$0.01–0.07</td><td>Not needed</td><td>Every phone</td><td>Google is the registered sender, so no paperwork — the fallback if DLT stalls.</td></tr>
+        <tr><td class="k">WhatsApp auth</td><td class="n">₹0.115</td><td>Meta review</td><td>WhatsApp only</td><td>Cheapest, but needs working data — the thing that fails on campus.</td></tr>
+        <tr><td class="k">Twilio Verify</td><td class="n">~₹0.45</td><td>Required</td><td>Every phone</td><td>Two to three times the price for no India-specific gain.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>
+    The provider sits behind a three-method <code>OtpChannel</code> interface, so switching is a
+    one-file change. A console channel prints codes to the server log for development, which is how the
+    entire feature was built and tested before any vendor account existed.
+  </p>
+
+  <h4>Expected cost</h4>
+  <p>
+    Because verification is per device rather than per order (§8), the expected volume is roughly
+    <strong>3,000 codes a year — about ₹600</strong> — against roughly ₹16,500 if a code were required
+    at every checkout.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="identity">
+  <h2><span class="n">08</span> Identity: the hardest problem</h2>
+  <p class="deck">The part of this project with the most design in it, and the least code.</p>
+
+  <p>
+    Early on, an order belonged to a <em>table</em> and to nothing else. A table is furniture: it does
+    not order food, and it outlives the person sitting at it. That single modelling gap caused two
+    failures at once:
+  </p>
+  <ul>
+    <li><strong>A student closes the browser tab and loses their order list.</strong> The only handle on the order lived in that one browser's storage.</li>
+    <li><strong>One student leaves and another sits down.</strong> Nothing distinguished them, so the new student saw the previous one's orders.</li>
+  </ul>
+
+  <p>
+    The answer is a <strong>visit</strong> — one student's sitting at one table — and the rule that
+    <strong>the phone number is the identity, the table scopes who may claim it, and the cookie is only
+    a fast path.</strong> The phone number is already mandatory at checkout, so this costs the student
+    nothing extra.
+  </p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Situation</th><th>What happens</th></tr></thead>
+      <tbody>
+        <tr><td class="k">Closes the tab, reopens</td><td>Cookie still alive → same visit → orders are there.</td></tr>
+        <tr><td class="k">Moves from table 7 to table 12</td><td>Same phone, same browser → one list, both orders. The table does not own the order.</td></tr>
+        <tr><td class="k">Finishes and leaves; someone else sits down</td><td>The new student orders with their own number → a different guest from that checkout onward.</td></tr>
+        <tr><td class="k">Orders from a second phone</td><td>Verification by one-time code joins the sittings together.</td></tr>
+        <tr><td class="k">Types someone else's number</td><td>Sees only what that browser itself ordered. This is the attack that was closed.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>The vulnerability, and the fix</h3>
+  <p>
+    Making the order list follow the phone number created a real hole. Someone at a table could type a
+    classmate's number at checkout, be joined to their sitting, and read their <strong>token
+    number</strong> — which is enough to walk up and collect their food when the counter calls it.
+  </p>
+  <p>
+    The fix is a one-time code, but deliberately <em>not</em> at checkout. Placing an order, paying and
+    seeing the sitting you just paid for are never gated, because SMS in India routinely takes 30
+    seconds and sometimes never arrives — <strong>a telecom outage must not stop the canteen selling
+    food.</strong> Instead the gate sits on the cross-visit history query:
+  </p>
+
+<pre><code><span class="c">// A browser may see a sitting if either is true:</span>
+<span class="c">//   1. it opened that sitting itself   (visits.device_hash)</span>
+<span class="c">//   2. it has verified the number      (verified_phones)</span></code></pre>
+
+  <p>
+    Rule 1 is why most students never meet a code at all: the phone that placed the order keeps seeing
+    it, so moving between tables needs no SMS. Rule 2 covers a genuinely different browser — a second
+    phone, cleared storage, or someone typing a number that is not theirs. Verification lasts 90 days
+    per device.
+  </p>
+
+  <h4>Code handling</h4>
+  <ul>
+    <li>Six digits from <code>crypto.randomInt</code>, never <code>Math.random</code>.</li>
+    <li>Only an <strong>HMAC-SHA256 of the code</strong> is stored, keyed by the server secret. A six-digit code has a million-value space, so an unkeyed hash would be exhaustible from a database dump in milliseconds; the server-side key is what makes a leaked row worthless.</li>
+    <li>Five wrong attempts burn the challenge. Five minutes to expiry. Single use, consumed by one conditional <code>UPDATE</code> so two submissions cannot both win.</li>
+    <li>Send limits live in Postgres, not process memory — an in-memory limit would multiply the SMS bill by the number of running instances.</li>
+    <li>Every failure returns one message and one shape, so the endpoint cannot be used to learn which numbers are real.</li>
+  </ul>
+
+  <div class="note warn">
+    <span class="label">Known residual risk, stated deliberately</span>
+    <p>
+      A student who hands their own unlocked phone to a friend is still that student as far as the app
+      is concerned. No system fixes this and none should try. The prize is one meal inside a four-hour
+      window, and defending further would cost every honest student time at lunch.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="security">
+  <h2><span class="n">09</span> Security</h2>
+  <p class="deck">Eleven invariants set at the start of the project, and where each is enforced.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>#</th><th>Invariant</th><th>Enforced in</th></tr></thead>
+      <tbody>
+        <tr><td class="n">1</td><td>Every price recomputed server-side; prices and totals are never accepted from the client</td><td class="name">lib/pricing.ts</td></tr>
+        <tr><td class="n">2</td><td>Table QR tokens are HMACs verified server-side; a table number is never trusted from a URL</td><td class="name">lib/table-token.ts</td></tr>
+        <tr><td class="n">3</td><td>Status URLs use a random <code>public_token</code>, never a sequential id</td><td class="name">store/orders.ts</td></tr>
+        <tr><td class="n">4</td><td>Idempotency key on order creation, enforced by a primary key collision</td><td class="name">idempotency_keys</td></tr>
+        <tr><td class="n">5</td><td>Sold-out re-checked with a row lock inside the writing transaction</td><td class="name">store/menu.ts</td></tr>
+        <tr><td class="n">6</td><td>Order creation rate-limited per sitting and per IP</td><td class="name">api/orders</td></tr>
+        <tr><td class="n">7</td><td>Every admin query scoped by the authenticated user's stall, at the data layer</td><td class="name">lib/api-auth.ts</td></tr>
+        <tr><td class="n">8</td><td>Staff sessions expire after four hours</td><td class="name">lib/auth.ts</td></tr>
+        <tr><td class="n">9</td><td>Audit log on every payment confirmation, refund, cancellation, price change and UPI change</td><td class="name">store/audit.ts</td></tr>
+        <tr><td class="n">10</td><td>Phone numbers masked in all application logs</td><td class="name">lib/format.ts</td></tr>
+        <tr><td class="n">11</td><td>HTTPS only, with HSTS</td><td class="name">next.config.mjs</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Secrets</h3>
+  <p>
+    A single <code>AUTH_SECRET</code> signs staff sessions, table sessions and the HMAC inside every
+    printed QR code. In production the app <strong>refuses to start</strong> if it is missing, shorter
+    than 32 characters, or equal to the development placeholder — rejected by name, because that value
+    is published in the repository and is the one most likely to be copied across by mistake. The check
+    runs at startup, so a misconfigured deploy fails at deploy time rather than one student at a time.
+  </p>
+  <p>
+    A consequence worth recording: <strong>rotating <code>AUTH_SECRET</code> invalidates every printed
+    QR sticker.</strong> That is the intended lever if stickers are ever compromised, but it means the
+    secret must be generated before the stickers are printed.
+  </p>
+
+  <h3>Passwords and headers</h3>
+  <p>
+    Staff passwords are hashed with <strong>scrypt</strong>. Response headers set HSTS, <code>nosniff</code>,
+    <code>X-Frame-Options: DENY</code>, a Permissions-Policy and a Content-Security-Policy.
+    <code>Referrer-Policy</code> is <code>no-referrer</code> and is load-bearing rather than decorative:
+    this app deliberately puts secrets in URLs (<code>/t/&lt;qr token&gt;</code>,
+    <code>/status/&lt;public token&gt;</code>) and a Referer header would hand them to whatever the
+    browser talks to next.
+  </p>
+
+  <div class="note">
+    <span class="label">A bug worth reporting honestly</span>
+    <p>
+      The first version of that CSP set <code>default-src 'self'</code> without an explicit
+      <code>script-src</code>, which blocks Next.js's inline hydration bootstrap through the
+      default-src fallback. Every page rendered and was completely dead to the touch — and
+      <strong>all 151 server-side checks passed against that build.</strong> Only a browser test caught
+      it. It is the clearest example in this project of a class of failure that server-side testing
+      cannot see at all.
+    </p>
+  </div>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="design">
+  <h2><span class="n">10</span> Interface and design system</h2>
+  <p class="deck">Designed for a phone held at arm's length in a bright, loud hall.</p>
+
+  <p>
+    Every guest screen is built for a 390 px phone first. Tokens are set as CSS custom properties and
+    consumed through Tailwind, so the four stalls are themed by a single <code>data-stall</code>
+    attribute rather than four stylesheets — each stall gets its own accent while sharing every
+    component.
+  </p>
+
+  <h3>Three menu layouts</h3>
+  <p>
+    The four stalls do not share a menu layout, because they do not sell the same kind of thing. Jay
+    Bhavani has many categories and uses a vertical category rail; La Pinos leads with offers in a
+    grid; Tea Post and The Thick Shake have short menus and use a hero image with search. The layout is
+    a per-stall column in the database, not a hard-coded branch.
+  </p>
+
+  <h3>Accessibility, measured rather than assumed</h3>
+  <ul>
+    <li><strong>Contrast was computed numerically, not eyeballed.</strong> An audit found every primary button failing WCAG AA at 2.62:1 — white text on the coral accent. It was fixed by splitting the accent into separate text and fill colours.</li>
+    <li><strong>Every touch target is at least 44 × 44 px.</strong> An audit found four that were not (36–42 px) and all were raised.</li>
+    <li>Full light and dark themes; typography scales with the user's settings; motion respects <code>prefers-reduced-motion</code>; the viewport permits zoom up to 5×.</li>
+  </ul>
+
+  <h3>Errors are written for the moment they are read</h3>
+  <p>
+    Every dead end — a damaged QR code, a stale link, a render failure — says what to do next
+    <em>in the room</em> rather than what went wrong in the software, and always offers the counter as
+    the way out. No stack traces and no error codes: a student can do nothing with either, and a digest
+    tells an attacker more than it tells them.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="testing">
+  <h2><span class="n">11</span> Testing</h2>
+  <p class="deck">227 automated checks across seven suites, all currently passing.</p>
+
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Suite</th><th>Checks</th><th>Covers</th></tr></thead>
+      <tbody>
+        <tr><td class="name">accept</td><td class="n">49</td><td>The eleven security invariants, server-side pricing, QR token forgery, mandatory phone, tenancy.</td></tr>
+        <tr><td class="name">sessions</td><td class="n">36</td><td>Visits, table turnover, recovery, cross-device behaviour, backwards compatibility with pre-visit cookies.</td></tr>
+        <tr><td class="name">rush</td><td class="n">63</td><td>Concurrency: ten students at once, token-sequence races, sold-out toggles mid-rush, double-taps, plus a SQL integrity sweep.</td></tr>
+        <tr><td class="name">otp</td><td class="n">54</td><td>Code lifecycle, attempt caps, replay, spend limits, per-device scoping, what the database actually stores.</td></tr>
+        <tr><td class="name">hours</td><td class="n">8</td><td>Opening hours, pause, force-open and force-closed service modes.</td></tr>
+        <tr><td class="name">otpui</td><td class="n">17</td><td>The verification screens in a real browser at 390 px.</td></tr>
+        <tr><td class="name">csp</td><td class="n">—</td><td>Walks the guest journey in a browser and fails on any console error, page error or CSP violation.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Method</h3>
+  <p>
+    The suites drive the real HTTP API against a real PostgreSQL database, then assert directly against
+    the database with SQL. Concurrency is tested by firing genuinely simultaneous requests with
+    <code>Promise.all</code> and checking invariants afterwards: no duplicate token at a stall, no gap
+    in any sequence, every subtotal equal to the sum of its lines, no orphaned rows, and the stall
+    counter matching the number of orders written.
+  </p>
+
+  <p>
+    Two principles the project stuck to are worth stating, because both caught real bugs:
+    <strong>measure rather than eyeball</strong> — contrast ratios and touch targets were computed, not
+    judged — and <strong>always confirm in a browser</strong>, since hydration and CSP failures are
+    invisible to server-side tests.
+  </p>
+
+  <h4>Bugs found by testing that had not been reported</h4>
+  <p>
+    Around twenty, several security- or accessibility-critical. Examples: a public order endpoint
+    returning the guest's phone number; a rate limit keyed to the table so everyone seated there shared
+    one budget; a network retry of an already-placed order being answered with "too many orders"; the
+    admin login page printing working credentials for all five seeded accounts; nested
+    <code>&lt;button&gt;</code> elements causing a hydration error on every menu load.
+  </p>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="status">
+  <h2><span class="n">12</span> Status and remaining work</h2>
+  <p class="deck">The code is complete. The deployment is not.</p>
+
+  <h3>Complete</h3>
+  <ul>
+    <li>Guest flow: QR entry, stall picker, three menu layouts, cart, checkout, UPI and cash, live status, order history, recovery.</li>
+    <li>Staff flow: login, live queue, status transitions, payment confirmation, cancellation and refunds, menu editing, sold-out toggle, opening hours, QR sticker printing, daily totals.</li>
+    <li>Supervisor flow: cross-stall overview, staff account management, audit log.</li>
+    <li>PostgreSQL data layer with real transactional guarantees; three migrations; RLS enabled.</li>
+    <li>Phone verification end to end, with the production SMS provider written and waiting on registration.</li>
+    <li>227 automated checks, all passing.</li>
+  </ul>
+
+  <h3>Outstanding before students can use it</h3>
+  <div class="scroller">
+    <table>
+      <thead><tr><th>Item</th><th>Type</th><th>Owner</th></tr></thead>
+      <tbody>
+        <tr>
+          <td class="k">UPI IDs are placeholders</td><td><span class="pill block">Blocker</span></td>
+          <td>Stall owners. All four carry invented handles and one carries a fabricated GSTIN that prints on receipts — payments would go nowhere real.</td>
+        </tr>
+        <tr><td class="k">Seeded staff passwords</td><td><span class="pill block">Blocker</span></td><td>Change before first deploy; the defaults are in the repository.</td></tr>
+        <tr><td class="k">Live database connection</td><td><span class="pill todo">Config</span></td><td>The pooler connection string. Everything so far has run against local PostgreSQL.</td></tr>
+        <tr><td class="k">DLT registration</td><td><span class="pill todo">Decision</span></td><td>Which legal entity files it — the university, or each stall. Until then codes are printed to the log, not sent.</td></tr>
+        <tr><td class="k">Menu photography</td><td><span class="pill todo">Content</span></td><td>Currently generated placeholder art. The <code>image_url</code> field is ready.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Honest limitations</h3>
+  <ul>
+    <li>The rate limiter is per-process, so on multi-instance hosting the effective limit multiplies by instance count. A shared counter is the fix when it matters. <em>OTP send limits are already in the database for exactly this reason</em>, because those cost money.</li>
+    <li>Payment confirmation is manual by design. It is a human checking their own UPI app — deliberate, but it does mean a busy stall can fall behind on confirmations.</li>
+    <li>No admin "live tables" view showing who is seated where.</li>
+    <li>Single region. Fine for one campus; would need thought for more.</li>
+  </ul>
+</section>
+
+<!-- ══════════════════════════════════════════════════════════════════════ -->
+<section id="run">
+  <h2><span class="n">13</span> Running it</h2>
+
+<pre><code><span class="c"># 1. Install</span>
+npm install
+
+<span class="c"># 2. Configure — copy .env.example to .env.local and fill in</span>
+AUTH_SECRET=<span class="c">$(openssl rand -hex 32)</span>
+DATABASE_URL=postgresql://...pooler.supabase.com:6543/postgres
+CANTEEN_TIMEZONE=Asia/Kolkata
+OTP_PROVIDER=console
+
+<span class="c"># 3. Create the schema and seed it</span>
+psql <span class="k">$DATABASE_URL</span> -f db/migrations/001_init.sql
+psql <span class="k">$DATABASE_URL</span> -f db/migrations/002_enable_rls.sql
+psql <span class="k">$DATABASE_URL</span> -f db/migrations/003_phone_verification.sql
+npm run db:seed        <span class="c"># 4 stalls, 40 items, 24 tables, 6 staff</span>
+
+<span class="c"># 4. Run</span>
+npm run dev            <span class="c"># development</span>
+npm run build &amp;&amp; npm start
+
+<span class="c"># Checks</span>
+npm run typecheck      <span class="c"># tsc --noEmit</span>
+npm run lint</code></pre>
+
+  <p>
+    The repository is <code>deeppatel6598/rost-and-tost-cafe-system</code>, branch
+    <code>claude/qr-order-cafe-codebase-2f8hqz</code>, 18 commits. Environment variables are documented
+    inline in <code>.env.example</code>, including why each exists and what breaks without it.
+  </p>
+</section>
+
+<footer>
+  <p>
+    Figures in this document were read from the codebase and database on 13 September 2026, not
+    estimated: file and line counts from the source tree, table and column counts from
+    <code>information_schema</code>, check counts from the test suites' own output. SMS prices are
+    September 2026 published rates excluding GST.
+  </p>
+</footer>
+
+</div>
