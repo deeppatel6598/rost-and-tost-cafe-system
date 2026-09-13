@@ -5,7 +5,7 @@ export const dynamic = "force-dynamic";
 
 /** Public: the four stalls with their current open/closed/paused state. */
 export async function GET() {
-  const stalls = listStallViews().map((s) => ({
+  const stalls = (await listStallViews()).map((s) => ({
     id: s.id,
     name: s.name,
     description: s.description,

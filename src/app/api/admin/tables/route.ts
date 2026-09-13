@@ -15,7 +15,7 @@ export async function GET(_request: NextRequest) {
   if (!session) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
   return NextResponse.json({
-    tables: listTables().map((t) => ({
+    tables: (await listTables()).map((t) => ({
       id: t.id,
       tableNumber: t.tableNumber,
       isActive: t.isActive,

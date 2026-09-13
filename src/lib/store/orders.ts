@@ -2,9 +2,11 @@ import { generateId, generatePublicToken } from "@/lib/format";
 import { CANCEL_WINDOW_MS } from "@/lib/order-constants";
 import { PHONE_HELP, isValidPhone, normalisePhone } from "@/lib/phone";
 import { priceCart, PricingError } from "@/lib/pricing";
-import { db } from "@/lib/store/db";
+import { sql, type Db } from "@/lib/db/sql";
+import { loadCatalogue } from "@/lib/store/menu";
 import { getAvailability, nextTokenNumber } from "@/lib/store/stalls";
 import { claimVisit, currentVisitsByPhone, getVisit } from "@/lib/store/visits";
+import type { DiningTable, Stall } from "@/lib/types";
 import type {
   CartLineInput,
   Order,
@@ -39,41 +41,76 @@ const FORWARD: Record<SubOrderStatus, SubOrderStatus | null> = {
 
 /* ── Reads ───────────────────────────────────────────────────────────────── */
 
-function itemsFor(subOrderId: string): SubOrderItem[] {
-  return db.subOrderItems.filter((i) => i.subOrderId === subOrderId);
+/**
+ * Hydrates sub-orders into the shape every screen renders.
+ *
+ * Takes a list rather than one row so a queue of forty orders costs three
+ * queries instead of a hundred and twenty. The joined columns are aliased so
+ * transform.camel maps them onto the view's own field names.
+ */
+async function toViews(subs: SubOrder[], tx: Db = sql): Promise<SubOrderView[]> {
+  if (subs.length === 0) return [];
+  const subIds = subs.map((s) => s.id);
+  const orderIds = [...new Set(subs.map((s) => s.orderId))];
+
+  const [lines, orders] = await Promise.all([
+    tx<SubOrderItem[]>`select * from sub_order_items where sub_order_id in ${tx(subIds)}`,
+    tx<{ id: string; publicToken: string; guestPhone?: string; tableNumber: number }[]>`
+      select o.id, o.public_token, o.guest_phone, t.table_number
+      from orders o join dining_tables t on t.id = o.table_id
+      where o.id in ${tx(orderIds)}
+    `,
+  ]);
+  const stalls = await tx<{ id: string; name: string; tokenPrefix: string }[]>`
+    select id, name, token_prefix from stalls where id in ${tx([...new Set(subs.map((s) => s.stallId))])}
+  `;
+
+  const linesBySub = new Map<string, SubOrderItem[]>();
+  for (const line of lines) {
+    linesBySub.set(line.subOrderId, [...(linesBySub.get(line.subOrderId) ?? []), line]);
+  }
+  const orderById = new Map(orders.map((o) => [o.id, o]));
+  const stallById = new Map(stalls.map((s) => [s.id, s]));
+
+  return subs.map((sub) => {
+    const order = orderById.get(sub.orderId);
+    const stall = stallById.get(sub.stallId);
+    return {
+      ...sub,
+      items: linesBySub.get(sub.id) ?? [],
+      stallName: stall?.name ?? "Unknown stall",
+      stallTokenPrefix: stall?.tokenPrefix ?? "",
+      tableNumber: order?.tableNumber ?? 0,
+      publicToken: order?.publicToken ?? "",
+      guestPhone: order?.guestPhone,
+    };
+  });
 }
 
-export function toView(sub: SubOrder): SubOrderView {
-  const order = db.orders.find((o) => o.id === sub.orderId);
-  const stall = db.stalls.find((s) => s.id === sub.stallId);
-  const table = db.tables.find((t) => t.id === order?.tableId);
-  return {
-    ...sub,
-    items: itemsFor(sub.id),
-    stallName: stall?.name ?? "Unknown stall",
-    stallTokenPrefix: stall?.tokenPrefix ?? "",
-    tableNumber: table?.tableNumber ?? 0,
-    publicToken: order?.publicToken ?? "",
-    guestPhone: order?.guestPhone,
-  };
+async function toView(sub: SubOrder, tx: Db = sql): Promise<SubOrderView> {
+  const [view] = await toViews([sub], tx);
+  return view;
 }
 
-export function getOrderByPublicToken(publicToken: string): Order | undefined {
-  return db.orders.find((o) => o.publicToken === publicToken);
+export async function getOrderByPublicToken(publicToken: string): Promise<Order | undefined> {
+  const [row] = await sql<Order[]>`select * from orders where public_token = ${publicToken}`;
+  return row;
 }
 
-/** Every sub-order under one public token (a table session's basket of orders). */
-export function getSubOrdersByPublicToken(publicToken: string): SubOrderView[] {
-  const order = getOrderByPublicToken(publicToken);
-  if (!order) return [];
-  return db.subOrders
-    .filter((s) => s.orderId === order.id)
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .map(toView);
+/** Every sub-order under one public token — that is, one checkout. */
+export async function getSubOrdersByPublicToken(publicToken: string): Promise<SubOrderView[]> {
+  const subs = await sql<SubOrder[]>`
+    select s.* from sub_orders s
+    join orders o on o.id = s.order_id
+    where o.public_token = ${publicToken}
+    order by s.created_at desc
+  `;
+  return toViews(subs);
 }
 
-export function getSubOrder(id: string): SubOrder | undefined {
-  return db.subOrders.find((s) => s.id === id);
+export async function getSubOrder(id: string): Promise<SubOrder | undefined> {
+  const [row] = await sql<SubOrder[]>`select * from sub_orders where id = ${id}`;
+  return row;
 }
 
 /**
@@ -81,20 +118,26 @@ export function getSubOrder(id: string): SubOrder | undefined {
  * authenticated user's stallId, so a staff account cannot read another
  * stall's orders by changing an id in a URL.
  */
-export function listSubOrdersForStall(stallId: string): SubOrderView[] {
-  return db.subOrders
-    .filter((s) => s.stallId === stallId)
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .map(toView);
+export async function listSubOrdersForStall(stallId: string): Promise<SubOrderView[]> {
+  const subs = await sql<SubOrder[]>`
+    select * from sub_orders where stall_id = ${stallId} order by created_at desc
+  `;
+  return toViews(subs);
 }
 
-export function getSubOrderForStall(stallId: string, subOrderId: string): SubOrderView | undefined {
-  const sub = db.subOrders.find((s) => s.id === subOrderId && s.stallId === stallId);
+export async function getSubOrderForStall(
+  stallId: string,
+  subOrderId: string,
+): Promise<SubOrderView | undefined> {
+  const [sub] = await sql<SubOrder[]>`
+    select * from sub_orders where id = ${subOrderId} and stall_id = ${stallId}
+  `;
   return sub ? toView(sub) : undefined;
 }
 
-export function listAllSubOrders(): SubOrderView[] {
-  return [...db.subOrders].sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1)).map(toView);
+export async function listAllSubOrders(): Promise<SubOrderView[]> {
+  const subs = await sql<SubOrder[]>`select * from sub_orders order by created_at desc`;
+  return toViews(subs);
 }
 
 /**
@@ -104,25 +147,27 @@ export function listAllSubOrders(): SubOrderView[] {
  * behind "my orders" — it follows the student across tables and across a
  * closed browser tab.
  */
-export function listOrdersForVisits(visitIds: string[]): SubOrderView[] {
+export async function listOrdersForVisits(visitIds: string[]): Promise<SubOrderView[]> {
   if (visitIds.length === 0) return [];
-  const wanted = new Set(visitIds);
-  const orderIds = new Set(db.orders.filter((o) => wanted.has(o.visitId)).map((o) => o.id));
-  return db.subOrders
-    .filter((s) => orderIds.has(s.orderId))
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .map(toView);
+  const subs = await sql<SubOrder[]>`
+    select s.* from sub_orders s
+    join orders o on o.id = s.order_id
+    where o.visit_id in ${sql(visitIds)}
+    order by s.created_at desc
+  `;
+  return toViews(subs);
 }
 
 /**
  * The orders a session should see: everything from every current visit
  * carrying its phone number, or just this sitting before the first checkout.
  */
-export function listOrdersForSession(visitId: string | undefined): SubOrderView[] {
-  const visit = getVisit(visitId);
+export async function listOrdersForSession(visitId: string | undefined): Promise<SubOrderView[]> {
+  const visit = await getVisit(visitId);
   if (!visit) return [];
   if (!visit.guestPhone) return listOrdersForVisits([visit.id]);
-  return listOrdersForVisits(currentVisitsByPhone(visit.guestPhone).map((v) => v.id));
+  const visits = await currentVisitsByPhone(visit.guestPhone);
+  return listOrdersForVisits(visits.map((v) => v.id));
 }
 
 /* ── Order creation ──────────────────────────────────────────────────────── */
@@ -160,136 +205,168 @@ export interface CreateOrderResult {
  * order without a schema rewrite. Today, ordering from a second stall creates
  * a second order with its own token, because each stall settles its own money.
  *
- * This whole function is synchronous on purpose. Node runs one JS thread, so
- * nothing interleaves between the availability check and the write — that is
- * what makes the idempotency lookup and the sold-out check atomic here. On a
- * real database both must move inside one transaction, with the sold-out
- * check done as a conditional update rather than a read-then-write.
+ * Everything from the idempotency check to the write happens in ONE
+ * transaction, which is what makes the guarantees real rather than incidental.
+ * The in-memory version leaned on Node running a single thread; that stops
+ * being true the moment there is more than one server process, which is
+ * exactly what serverless hosting does.
+ *
+ * Three races are closed here:
+ *
+ *  - **Double-tap.** idempotency_keys has the key as its primary key, so a
+ *    concurrent duplicate loses the insert and reads the winner's order.
+ *  - **Sold out.** loadCatalogue takes `for update` on the item rows, so two
+ *    students racing for the last plate serialise and the second sees the
+ *    updated row.
+ *  - **Token numbers.** nextTokenNumber increments and returns in one
+ *    statement, inside this transaction, so two simultaneous orders cannot be
+ *    handed the same number — and a rolled-back order does not burn one.
  */
-export function createOrder(args: CreateOrderArgs): CreateOrderResult {
-  // Idempotency first: a double-tap, or an offline retry of a request that
-  // actually succeeded, must return the original order rather than a second one.
-  const existingOrderId = db.idempotency.get(args.idempotencyKey);
-  if (existingOrderId) {
-    const order = db.orders.find((o) => o.id === existingOrderId);
-    const sub = db.subOrders.find((s) => s.orderId === existingOrderId);
-    if (order && sub) {
-      return { order, visitId: order.visitId, subOrder: toView(sub), replayed: true };
-    }
-  }
-
+export async function createOrder(args: CreateOrderArgs): Promise<CreateOrderResult> {
   if (!isValidPhone(args.guestPhone)) {
     throw new OrderError(PHONE_HELP, "phone_invalid", 400);
   }
 
-  const table = db.tables.find((t) => t.id === args.tableId);
-  if (!table || !table.isActive) {
-    throw new OrderError("That table is not taking orders.", "invalid_table", 400);
-  }
+  const replay = await findByIdempotencyKey(args.idempotencyKey);
+  if (replay) return replay;
 
-  const stall = db.stalls.find((s) => s.id === args.stallId);
-  if (!stall) {
-    throw new OrderError("That stall does not exist.", "unknown_stall", 404);
-  }
-
-  const availability = getAvailability(stall);
-  if (!availability.canOrder) {
-    throw new OrderError(`${stall.name} is not taking orders right now.`, "stall_closed", 409);
-  }
-
-  if (args.paymentMethod === "cash" && !stall.acceptsCash) {
-    throw new OrderError(`${stall.name} is not accepting cash right now.`, "method_unavailable", 409);
-  }
-  if (args.paymentMethod === "upi" && !stall.acceptsUpi) {
-    throw new OrderError(`${stall.name} is not accepting UPI right now.`, "method_unavailable", 409);
-  }
-
-  let priced;
   try {
-    priced = priceCart(stall, args.lines);
+    return await sql.begin(async (tx) => {
+      const [table] = await tx<DiningTable[]>`
+        select * from dining_tables where id = ${args.tableId} and is_active
+      `;
+      if (!table) {
+        throw new OrderError("That table is not taking orders.", "invalid_table", 400);
+      }
+
+      const [stall] = await tx<Stall[]>`select * from stalls where id = ${args.stallId}`;
+      if (!stall) {
+        throw new OrderError("That stall does not exist.", "unknown_stall", 404);
+      }
+
+      if (!getAvailability(stall).canOrder) {
+        throw new OrderError(`${stall.name} is not taking orders right now.`, "stall_closed", 409);
+      }
+      if (args.paymentMethod === "cash" && !stall.acceptsCash) {
+        throw new OrderError(`${stall.name} is not accepting cash right now.`, "method_unavailable", 409);
+      }
+      if (args.paymentMethod === "upi" && !stall.acceptsUpi) {
+        throw new OrderError(`${stall.name} is not accepting UPI right now.`, "method_unavailable", 409);
+      }
+
+      // Locks the item rows, then prices against exactly those rows. Pricing
+      // and the sold-out check therefore see one consistent snapshot — there
+      // is no second read for a toggle to slip between.
+      const catalogue = await loadCatalogue(
+        (args.lines ?? []).map((l) => l.itemId),
+        tx,
+      );
+
+      let priced;
+      try {
+        priced = priceCart(stall, args.lines, catalogue);
+      } catch (err) {
+        if (err instanceof PricingError) {
+          throw new OrderError(err.message, err.code, err.code === "item_unavailable" ? 409 : 422);
+        }
+        throw err;
+      }
+
+      // The client's total is only ever a disagreement check. The server's
+      // number is the one that gets charged; a mismatch means the menu changed
+      // under the guest (or someone is editing the request), so stop and make
+      // them re-read.
+      if (typeof args.expectedTotal === "number" && Math.round(args.expectedTotal) !== priced.total) {
+        throw new OrderError(
+          "Prices changed while you were ordering. Please review your cart and try again.",
+          "total_mismatch",
+          409,
+        );
+      }
+
+      // Resolve identity only once the order is certain to be written: a
+      // different phone number retires the sitting, and that must not happen
+      // for an attempt that then fails on price or availability.
+      const visit = await claimVisit(args.visitId, args.guestPhone, tx);
+
+      const orderId = generateId("ord");
+      const subOrderId = generateId("sub");
+      const tokenNumber = await nextTokenNumber(stall.id, tx);
+
+      const [order] = await tx<Order[]>`
+        insert into orders (id, public_token, table_id, visit_id, fulfillment_type, guest_phone)
+        values (
+          ${orderId}, ${generatePublicToken()}, ${table.id}, ${visit.id}, 'dine_in',
+          ${normalisePhone(args.guestPhone)}
+        )
+        returning *
+      `;
+
+      const [subOrder] = await tx<SubOrder[]>`
+        insert into sub_orders (
+          id, order_id, stall_id, token_number, status, payment_method, payment_status,
+          subtotal, tax_amount, total, special_instructions
+        ) values (
+          ${subOrderId}, ${orderId}, ${stall.id}, ${tokenNumber}, 'PLACED',
+          ${args.paymentMethod}, 'PENDING',
+          ${priced.subtotal}, ${priced.taxAmount}, ${priced.total},
+          ${args.specialInstructions?.slice(0, 120) ?? null}
+        )
+        returning *
+      `;
+
+      for (const line of priced.lines) {
+        await tx`
+          insert into sub_order_items (
+            id, sub_order_id, item_id, variant_id, item_name_snapshot, variant_name_snapshot,
+            unit_price_snapshot, quantity, addons_snapshot, line_total
+          ) values (
+            ${generateId("soi")}, ${subOrderId}, ${line.itemId}, ${line.variantId ?? null},
+            ${line.itemNameSnapshot}, ${line.variantNameSnapshot ?? null},
+            ${line.unitPriceSnapshot}, ${line.quantity},
+            ${tx.json(line.addonsSnapshot as never)}, ${line.lineTotal}
+          )
+        `;
+      }
+
+      // Last, so a duplicate that got this far still rolls back cleanly. The
+      // primary key is the arbiter: the loser's insert fails and it replays.
+      await tx`insert into idempotency_keys (key, order_id) values (${args.idempotencyKey}, ${orderId})`;
+
+      return {
+        order,
+        visitId: visit.id,
+        subOrder: await toView(subOrder, tx),
+        replayed: false,
+      };
+    });
   } catch (err) {
-    if (err instanceof PricingError) {
-      throw new OrderError(err.message, err.code, err.code === "item_unavailable" ? 409 : 422);
+    // A concurrent double-tap lost the race on the idempotency primary key.
+    // That is a success from the student's point of view: their order exists.
+    if (isUniqueViolation(err)) {
+      const replayed = await findByIdempotencyKey(args.idempotencyKey);
+      if (replayed) return replayed;
     }
     throw err;
   }
+}
 
-  // The client's total is only ever a disagreement check. The server's number
-  // is the one that gets charged; a mismatch means the menu changed under the
-  // guest (or someone is editing the request), so stop and make them re-read.
-  if (typeof args.expectedTotal === "number" && Math.round(args.expectedTotal) !== priced.total) {
-    throw new OrderError(
-      "Prices changed while you were ordering. Please review your cart and try again.",
-      "total_mismatch",
-      409,
-    );
-  }
+function isUniqueViolation(err: unknown): boolean {
+  return typeof err === "object" && err !== null && (err as { code?: string }).code === "23505";
+}
 
-  // Sold-out race: re-read availability immediately before writing, inside the
-  // same synchronous block as the write below, so two students racing for the
-  // last plate cannot both pass. (DB port: SELECT ... FOR UPDATE, or an
-  // UPDATE ... WHERE is_available = true guard.)
-  for (const line of priced.lines) {
-    const item = db.items.find((i) => i.id === line.itemId);
-    if (!item || !item.isActive || !item.isAvailable) {
-      throw new OrderError(`${line.itemNameSnapshot} just sold out.`, "item_unavailable", 409);
-    }
-    if (line.variantId && !db.variants.find((v) => v.id === line.variantId)?.isAvailable) {
-      throw new OrderError(`${line.itemNameSnapshot} just sold out.`, "variant_unavailable", 409);
-    }
-  }
-
-  const now = new Date().toISOString();
-
-  // Resolve identity last, once the order is certain to be written: a different
-  // phone number retires the sitting, and that must not happen for an attempt
-  // that then fails on price or availability.
-  const visit = claimVisit(args.visitId, args.guestPhone);
-
-  const order: Order = {
-    id: generateId("ord"),
-    publicToken: generatePublicToken(),
-    tableId: table.id,
-    visitId: visit.id,
-    fulfillmentType: "dine_in",
-    createdAt: now,
-    guestPhone: normalisePhone(args.guestPhone),
-  };
-
-  const subOrder: SubOrder = {
-    id: generateId("sub"),
-    orderId: order.id,
-    stallId: stall.id,
-    tokenNumber: nextTokenNumber(stall.id),
-    status: "PLACED",
-    paymentMethod: args.paymentMethod,
-    paymentStatus: "PENDING",
-    subtotal: priced.subtotal,
-    taxAmount: priced.taxAmount,
-    total: priced.total,
-    specialInstructions: args.specialInstructions?.slice(0, 120),
-    createdAt: now,
-  };
-
-  const subItems: SubOrderItem[] = priced.lines.map((line) => ({
-    id: generateId("soi"),
-    subOrderId: subOrder.id,
-    itemId: line.itemId,
-    variantId: line.variantId,
-    itemNameSnapshot: line.itemNameSnapshot,
-    variantNameSnapshot: line.variantNameSnapshot,
-    unitPriceSnapshot: line.unitPriceSnapshot,
-    quantity: line.quantity,
-    addonsSnapshot: line.addonsSnapshot,
-    lineTotal: line.lineTotal,
-  }));
-
-  db.orders.push(order);
-  db.subOrders.push(subOrder);
-  db.subOrderItems.push(...subItems);
-  db.idempotency.set(args.idempotencyKey, order.id);
-
-  return { order, visitId: visit.id, subOrder: toView(subOrder), replayed: false };
+async function findByIdempotencyKey(key: string): Promise<CreateOrderResult | null> {
+  const [order] = await sql<Order[]>`
+    select o.* from orders o
+    join idempotency_keys k on k.order_id = o.id
+    where k.key = ${key}
+  `;
+  if (!order) return null;
+  const [sub] = await sql<SubOrder[]>`
+    select * from sub_orders where order_id = ${order.id} order by created_at limit 1
+  `;
+  if (!sub) return null;
+  return { order, visitId: order.visitId, subOrder: await toView(sub), replayed: true };
 }
 
 /* ── State machine ───────────────────────────────────────────────────────── */
@@ -307,130 +384,171 @@ export function blockedReason(sub: SubOrder): string | null {
   return null;
 }
 
-export function advanceStatus(stallId: string, subOrderId: string): SubOrderView {
-  const sub = db.subOrders.find((s) => s.id === subOrderId && s.stallId === stallId);
-  if (!sub) throw new OrderError("Order not found.", "not_found", 404);
+export async function advanceStatus(stallId: string, subOrderId: string): Promise<SubOrderView> {
+  return sql.begin(async (tx) => {
+    // Locks the row for the duration: two staff phones tapping "Ready" at the
+    // same moment must not both read PREPARING and both advance it.
+    const [sub] = await tx<SubOrder[]>`
+      select * from sub_orders where id = ${subOrderId} and stall_id = ${stallId} for update
+    `;
+    if (!sub) throw new OrderError("Order not found.", "not_found", 404);
 
-  const blocked = blockedReason(sub);
-  if (blocked) throw new OrderError(blocked, "transition_blocked", 409);
+    const blocked = blockedReason(sub);
+    if (blocked) throw new OrderError(blocked, "transition_blocked", 409);
 
-  const next = FORWARD[sub.status];
-  if (!next) throw new OrderError("This order cannot move any further.", "transition_blocked", 409);
+    const next = FORWARD[sub.status];
+    if (!next) throw new OrderError("This order cannot move any further.", "transition_blocked", 409);
 
-  const now = new Date().toISOString();
+    let paymentStatus = sub.paymentStatus;
+    let paidConfirmedAt = sub.paidConfirmedAt ?? null;
 
-  if (next === "COMPLETED") {
-    // COMPLETED means the student has the food and the stall has the money.
-    // For cash that is the moment of collection, so confirm payment here.
-    if (sub.paymentMethod === "cash" && sub.paymentStatus === "PENDING") {
-      sub.paymentStatus = "CONFIRMED";
-      sub.paidConfirmedAt = now;
+    if (next === "COMPLETED") {
+      // COMPLETED means the student has the food and the stall has the money.
+      // For cash that is the moment of collection, so confirm payment here.
+      if (sub.paymentMethod === "cash" && paymentStatus === "PENDING") {
+        paymentStatus = "CONFIRMED";
+        paidConfirmedAt = new Date().toISOString();
+      }
+      if (paymentStatus !== "CONFIRMED") {
+        throw new OrderError("Payment is not confirmed for this order yet.", "payment_unconfirmed", 409);
+      }
     }
-    if (sub.paymentStatus !== "CONFIRMED") {
-      throw new OrderError("Payment is not confirmed for this order yet.", "payment_unconfirmed", 409);
-    }
-    sub.completedAt = now;
-  }
 
-  if (next === "ACCEPTED") sub.acceptedAt = now;
-  if (next === "READY") sub.readyAt = now;
-
-  sub.status = next;
-  return toView(sub);
+    const [updated] = await tx<SubOrder[]>`
+      update sub_orders set
+        status = ${next},
+        payment_status = ${paymentStatus},
+        paid_confirmed_at = ${paidConfirmedAt},
+        accepted_at  = ${next === "ACCEPTED" ? sql`now()` : sql`accepted_at`},
+        ready_at     = ${next === "READY" ? sql`now()` : sql`ready_at`},
+        completed_at = ${next === "COMPLETED" ? sql`now()` : sql`completed_at`}
+      where id = ${sub.id}
+      returning *
+    `;
+    return toView(updated, tx);
+  });
 }
 
-export function cancelByStall(stallId: string, subOrderId: string, reason: string): SubOrderView {
-  const sub = db.subOrders.find((s) => s.id === subOrderId && s.stallId === stallId);
-  if (!sub) throw new OrderError("Order not found.", "not_found", 404);
-  if (sub.status !== "PLACED" && sub.status !== "ACCEPTED") {
-    throw new OrderError("Only a new or accepted order can be rejected.", "transition_blocked", 409);
-  }
+export async function cancelByStall(
+  stallId: string,
+  subOrderId: string,
+  reason: string,
+): Promise<SubOrderView> {
+  return sql.begin(async (tx) => {
+    const [sub] = await tx<SubOrder[]>`
+      select * from sub_orders where id = ${subOrderId} and stall_id = ${stallId} for update
+    `;
+    if (!sub) throw new OrderError("Order not found.", "not_found", 404);
+    if (sub.status !== "PLACED" && sub.status !== "ACCEPTED") {
+      throw new OrderError("Only a new or accepted order can be rejected.", "transition_blocked", 409);
+    }
 
-  const now = new Date().toISOString();
-  sub.status = "CANCELLED";
-  sub.cancelReason = reason;
-  sub.cancelledAt = now;
-
-  // Money already taken has to come back. Surface it rather than silently
-  // leaving the student out of pocket.
-  if (sub.paymentStatus === "CONFIRMED") {
-    sub.paymentStatus = "REFUND_DUE";
-  }
-  return toView(sub);
+    // Money already taken has to come back. Surface it rather than silently
+    // leaving the student out of pocket.
+    const [updated] = await tx<SubOrder[]>`
+      update sub_orders set
+        status = 'CANCELLED',
+        cancel_reason = ${reason},
+        cancelled_at = now(),
+        payment_status = ${sub.paymentStatus === "CONFIRMED" ? "REFUND_DUE" : sub.paymentStatus}
+      where id = ${sub.id}
+      returning *
+    `;
+    return toView(updated, tx);
+  });
 }
 
-export function cancelByGuest(publicToken: string, subOrderId: string): SubOrderView {
-  const order = getOrderByPublicToken(publicToken);
-  if (!order) throw new OrderError("Order not found.", "not_found", 404);
+export async function cancelByGuest(publicToken: string, subOrderId: string): Promise<SubOrderView> {
+  return sql.begin(async (tx) => {
+    const [sub] = await tx<SubOrder[]>`
+      select s.* from sub_orders s
+      join orders o on o.id = s.order_id
+      where s.id = ${subOrderId} and o.public_token = ${publicToken}
+      for update of s
+    `;
+    if (!sub) throw new OrderError("Order not found.", "not_found", 404);
 
-  const sub = db.subOrders.find((s) => s.id === subOrderId && s.orderId === order.id);
-  if (!sub) throw new OrderError("Order not found.", "not_found", 404);
+    if (sub.status !== "PLACED") {
+      throw new OrderError(
+        "The stall has already started this order. Please ask staff for help.",
+        "too_late",
+        409,
+      );
+    }
+    if (Date.now() - new Date(sub.createdAt).getTime() > CANCEL_WINDOW_MS) {
+      throw new OrderError(
+        "The cancellation window has passed. Please ask staff for help.",
+        "too_late",
+        409,
+      );
+    }
 
-  if (sub.status !== "PLACED") {
-    throw new OrderError(
-      "The stall has already started this order. Please ask staff for help.",
-      "too_late",
-      409,
-    );
-  }
-  if (Date.now() - new Date(sub.createdAt).getTime() > CANCEL_WINDOW_MS) {
-    throw new OrderError(
-      "The cancellation window has passed. Please ask staff for help.",
-      "too_late",
-      409,
-    );
-  }
-
-  const now = new Date().toISOString();
-  sub.status = "CANCELLED";
-  sub.cancelReason = "Cancelled by guest";
-  sub.cancelledAt = now;
-  if (sub.paymentStatus === "CONFIRMED") sub.paymentStatus = "REFUND_DUE";
-  return toView(sub);
+    const [updated] = await tx<SubOrder[]>`
+      update sub_orders set
+        status = 'CANCELLED',
+        cancel_reason = 'Cancelled by guest',
+        cancelled_at = now(),
+        payment_status = ${sub.paymentStatus === "CONFIRMED" ? "REFUND_DUE" : sub.paymentStatus}
+      where id = ${sub.id}
+      returning *
+    `;
+    return toView(updated, tx);
+  });
 }
 
 /* ── Payments ────────────────────────────────────────────────────────────── */
 
 /** Guest tapped "I have paid" on a UPI order. A claim, not a confirmation. */
-export function markUpiClaimed(publicToken: string, subOrderId: string, reference?: string): SubOrderView {
-  const order = getOrderByPublicToken(publicToken);
-  if (!order) throw new OrderError("Order not found.", "not_found", 404);
-
-  const sub = db.subOrders.find((s) => s.id === subOrderId && s.orderId === order.id);
+export async function markUpiClaimed(
+  publicToken: string,
+  subOrderId: string,
+  reference?: string,
+): Promise<SubOrderView> {
+  const [sub] = await sql<SubOrder[]>`
+    select s.* from sub_orders s
+    join orders o on o.id = s.order_id
+    where s.id = ${subOrderId} and o.public_token = ${publicToken}
+  `;
   if (!sub) throw new OrderError("Order not found.", "not_found", 404);
   if (sub.paymentMethod !== "upi") {
     throw new OrderError("That order is not a UPI order.", "not_upi", 409);
   }
+  // Already verified by staff — a guest claim cannot walk that back.
   if (sub.paymentStatus === "CONFIRMED") return toView(sub);
 
-  sub.paymentStatus = "AWAITING_CONFIRMATION";
-  if (reference) sub.upiReference = reference.slice(0, 40);
-  return toView(sub);
+  const [updated] = await sql<SubOrder[]>`
+    update sub_orders set
+      payment_status = 'AWAITING_CONFIRMATION',
+      upi_reference = ${reference ? reference.slice(0, 40) : sql`upi_reference`}
+    where id = ${sub.id}
+    returning *
+  `;
+  return toView(updated);
 }
 
-export function setPaymentStatus(
+export async function setPaymentStatus(
   stallId: string,
   subOrderId: string,
   paymentStatus: PaymentStatus,
   actorId: string,
-): SubOrderView {
-  const sub = db.subOrders.find((s) => s.id === subOrderId && s.stallId === stallId);
-  if (!sub) throw new OrderError("Order not found.", "not_found", 404);
-
-  const now = new Date().toISOString();
-  sub.paymentStatus = paymentStatus;
-
-  if (paymentStatus === "CONFIRMED") {
-    sub.paidConfirmedBy = actorId;
-    sub.paidConfirmedAt = now;
-  }
-  if (paymentStatus === "REFUNDED") {
-    sub.refundedAt = now;
-  }
-  return toView(sub);
+): Promise<SubOrderView> {
+  const [updated] = await sql<SubOrder[]>`
+    update sub_orders set
+      payment_status = ${paymentStatus},
+      paid_confirmed_by = ${paymentStatus === "CONFIRMED" ? actorId : sql`paid_confirmed_by`},
+      paid_confirmed_at = ${paymentStatus === "CONFIRMED" ? sql`now()` : sql`paid_confirmed_at`},
+      refunded_at = ${paymentStatus === "REFUNDED" ? sql`now()` : sql`refunded_at`}
+    where id = ${subOrderId} and stall_id = ${stallId}
+    returning *
+  `;
+  if (!updated) throw new OrderError("Order not found.", "not_found", 404);
+  return toView(updated);
 }
 
 /* ── Reporting ───────────────────────────────────────────────────────────── */
+
+/** Money actually in the till: confirmed, and not cancelled afterwards. */
+const PAID = sql`s.payment_status = 'CONFIRMED' and s.status <> 'CANCELLED'`;
 
 export interface TodayStats {
   orderCount: number;
@@ -443,64 +561,77 @@ export interface TodayStats {
   hourly: { hour: number; count: number }[];
 }
 
-function isSameDay(iso: string, day: Date): boolean {
-  const d = new Date(iso);
-  return (
-    d.getFullYear() === day.getFullYear() && d.getMonth() === day.getMonth() && d.getDate() === day.getDate()
-  );
-}
-
 /**
  * Today's numbers for one stall, or the whole canteen when stallId is null.
- * Sales count only money actually confirmed — an unpaid or cancelled order
- * is not revenue, and a stall owner checking their day would spot it if it were.
+ *
+ * "Today" is the canteen's own day, not the server's: hosting runs in UTC, so
+ * grouping on the raw timestamp would roll the till over at 05:30 local and
+ * split a dinner service across two days. Sales count only money actually
+ * confirmed — an unpaid or cancelled order is not revenue, and a stall owner
+ * checking their day would spot it if it were.
  */
-export function todayStats(stallId: string | null, day: Date = new Date()): TodayStats {
-  const subs = db.subOrders.filter(
-    (s) => (stallId === null || s.stallId === stallId) && isSameDay(s.createdAt, day),
-  );
+export async function todayStats(stallId: string | null, day: Date = new Date()): Promise<TodayStats> {
+  const tz = process.env.CANTEEN_TIMEZONE || "Asia/Kolkata";
+  const scope = stallId === null ? sql`true` : sql`s.stall_id = ${stallId}`;
+  const sameDay = sql`
+    (s.created_at at time zone ${tz})::date = (${day.toISOString()}::timestamptz at time zone ${tz})::date
+  `;
 
-  const paid = subs.filter((s) => s.paymentStatus === "CONFIRMED" && s.status !== "CANCELLED");
-  const grossSales = paid.reduce((sum, s) => sum + s.total, 0);
+  const [totals] = await sql<
+    {
+      orderCount: number;
+      completedCount: number;
+      cancelledCount: number;
+      grossSales: number;
+      cashSales: number;
+      upiSales: number;
+    }[]
+  >`
+    select
+      count(*)::int as order_count,
+      count(*) filter (where s.status = 'COMPLETED')::int as completed_count,
+      count(*) filter (where s.status = 'CANCELLED')::int as cancelled_count,
+      coalesce(sum(s.total) filter (where ${PAID}), 0)::int as gross_sales,
+      coalesce(sum(s.total) filter (where ${PAID} and s.payment_method = 'cash'), 0)::int as cash_sales,
+      coalesce(sum(s.total) filter (where ${PAID} and s.payment_method = 'upi'), 0)::int as upi_sales
+    from sub_orders s
+    where ${scope} and ${sameDay}
+  `;
 
-  const itemTotals = new Map<string, { quantity: number; revenue: number }>();
-  for (const sub of paid) {
-    for (const line of itemsFor(sub.id)) {
-      const entry = itemTotals.get(line.itemNameSnapshot) ?? { quantity: 0, revenue: 0 };
-      entry.quantity += line.quantity;
-      entry.revenue += line.lineTotal;
-      itemTotals.set(line.itemNameSnapshot, entry);
-    }
-  }
+  const topItems = await sql<{ name: string; quantity: number; revenue: number }[]>`
+    select i.item_name_snapshot as name,
+           sum(i.quantity)::int as quantity,
+           sum(i.line_total)::int as revenue
+    from sub_order_items i
+    join sub_orders s on s.id = i.sub_order_id
+    where ${scope} and ${sameDay} and ${PAID}
+    group by i.item_name_snapshot
+    order by quantity desc
+    limit 5
+  `;
 
-  const hourly = Array.from({ length: 24 }, (_, hour) => ({
-    hour,
-    count: subs.filter((s) => new Date(s.createdAt).getHours() === hour).length,
-  }));
+  const hourRows = await sql<{ hour: number; count: number }[]>`
+    select extract(hour from (s.created_at at time zone ${tz}))::int as hour, count(*)::int as count
+    from sub_orders s
+    where ${scope} and ${sameDay}
+    group by 1
+  `;
+  const byHour = new Map(hourRows.map((r) => [r.hour, r.count]));
 
   return {
-    orderCount: subs.length,
-    completedCount: subs.filter((s) => s.status === "COMPLETED").length,
-    cancelledCount: subs.filter((s) => s.status === "CANCELLED").length,
-    grossSales,
-    cashSales: paid.filter((s) => s.paymentMethod === "cash").reduce((sum, s) => sum + s.total, 0),
-    upiSales: paid.filter((s) => s.paymentMethod === "upi").reduce((sum, s) => sum + s.total, 0),
-    topItems: Array.from(itemTotals.entries())
-      .map(([name, v]) => ({ name, ...v }))
-      .sort((a, b) => b.quantity - a.quantity)
-      .slice(0, 5),
-    hourly,
+    ...totals,
+    topItems,
+    hourly: Array.from({ length: 24 }, (_, hour) => ({ hour, count: byHour.get(hour) ?? 0 })),
   };
 }
 
 /** Orders needing human attention: failed payments and refunds owed. */
-export function listProblemOrders(stallId: string | null): SubOrderView[] {
-  return db.subOrders
-    .filter(
-      (s) =>
-        (stallId === null || s.stallId === stallId) &&
-        (s.paymentStatus === "FAILED" || s.paymentStatus === "REFUND_DUE"),
-    )
-    .sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1))
-    .map(toView);
+export async function listProblemOrders(stallId: string | null): Promise<SubOrderView[]> {
+  const subs = await sql<SubOrder[]>`
+    select * from sub_orders
+    where ${stallId === null ? sql`true` : sql`stall_id = ${stallId}`}
+      and payment_status in ('FAILED', 'REFUND_DUE')
+    order by created_at desc
+  `;
+  return toViews(subs);
 }

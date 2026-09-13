@@ -14,7 +14,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   if (!scope.ok) return scope.response;
 
   try {
-    const subOrder = advanceStatus(scope.stallId, params.subOrderId);
+    const subOrder = await advanceStatus(scope.stallId, params.subOrderId);
     return NextResponse.json({ subOrder });
   } catch (err) {
     if (err instanceof OrderError) {

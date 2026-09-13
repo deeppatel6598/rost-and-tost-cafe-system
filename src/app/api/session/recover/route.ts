@@ -71,10 +71,10 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const visit = findCurrentVisitAtTable(session.tableId, phone);
+  const visit = await findCurrentVisitAtTable(session.tableId, phone);
   const matched =
     visit &&
-    listOrdersForVisits([visit.id]).some((o) => normaliseToken(o.tokenNumber) === wantedToken);
+    (await listOrdersForVisits([visit.id])).some((o) => normaliseToken(o.tokenNumber) === wantedToken);
 
   // One message for every kind of miss, so this cannot be used to learn which
   // half was right — that is what would make the number worth guessing.
@@ -88,7 +88,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  touchVisit(visit.id);
+  await touchVisit(visit.id);
   await setTableSessionCookie({ ...session, visitId: visit.id });
 
   return NextResponse.json({ recovered: true });

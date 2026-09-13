@@ -19,7 +19,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const scope = await requireStallScope(request.nextUrl.searchParams.get("stallId"));
   if (!scope.ok) return scope.response;
 
-  const item = getItemView(params.itemId);
+  const item = await getItemView(params.itemId);
   if (!item || item.stallId !== scope.stallId) {
     return NextResponse.json({ error: "Item not found." }, { status: 404 });
   }
@@ -37,7 +37,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const before = getItemView(params.itemId);
+  const before = await getItemView(params.itemId);
   if (!before || before.stallId !== scope.stallId) {
     return NextResponse.json({ error: "Item not found." }, { status: 404 });
   }
@@ -46,7 +46,7 @@ export async function PATCH(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Price cannot be negative." }, { status: 400 });
   }
 
-  const item = updateItem(scope.stallId, params.itemId, {
+  const item = await updateItem(scope.stallId, params.itemId, {
     name: body.name?.trim().slice(0, 80),
     description: body.description?.trim().slice(0, 200),
     basePrice: typeof body.basePrice === "number" ? Math.round(body.basePrice) : undefined,
@@ -58,13 +58,13 @@ export async function PATCH(request: NextRequest, { params }: Params) {
   });
   if (!item) return NextResponse.json({ error: "Item not found." }, { status: 404 });
 
-  if (Array.isArray(body.variants)) replaceItemVariants(item.id, body.variants);
-  if (Array.isArray(body.addonGroups)) replaceItemAddonGroups(item.id, body.addonGroups);
+  if (Array.isArray(body.variants)) await replaceItemVariants(item.id, body.variants);
+  if (Array.isArray(body.addonGroups)) await replaceItemAddonGroups(item.id, body.addonGroups);
 
   // A price change is money, so it is auditable on its own terms rather than
   // being folded into a generic "item edited" line.
   if (typeof body.basePrice === "number" && body.basePrice !== before.basePrice) {
-    recordAudit({
+    await recordAudit({
       actorId: scope.session.staffId,
       actorName: scope.session.name,
       action: "menu.price_changed",
@@ -82,15 +82,15 @@ export async function DELETE(request: NextRequest, { params }: Params) {
   const scope = await requireStallScope(request.nextUrl.searchParams.get("stallId"));
   if (!scope.ok) return scope.response;
 
-  const before = getItemView(params.itemId);
+  const before = await getItemView(params.itemId);
   if (!before || before.stallId !== scope.stallId) {
     return NextResponse.json({ error: "Item not found." }, { status: 404 });
   }
 
   // Soft delete: past orders and receipts still point at this row.
-  deactivateItem(scope.stallId, params.itemId);
+  await deactivateItem(scope.stallId, params.itemId);
 
-  recordAudit({
+  await recordAudit({
     actorId: scope.session.staffId,
     actorName: scope.session.name,
     action: "menu.item_removed",

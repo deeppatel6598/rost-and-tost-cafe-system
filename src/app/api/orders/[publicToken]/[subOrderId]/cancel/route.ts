@@ -12,9 +12,9 @@ interface Params {
 export async function POST(_request: NextRequest, { params }: Params) {
   try {
     const before = { subOrderId: params.subOrderId };
-    const subOrder = cancelByGuest(params.publicToken, params.subOrderId);
+    const subOrder = await cancelByGuest(params.publicToken, params.subOrderId);
 
-    recordAudit({
+    await recordAudit({
       actorId: "guest",
       actorName: `Table ${subOrder.tableNumber}`,
       action: "order.cancelled_by_guest",

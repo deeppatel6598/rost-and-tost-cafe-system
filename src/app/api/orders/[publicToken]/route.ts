@@ -20,13 +20,19 @@ interface Params {
  * get it, through the authenticated stall route.
  */
 export async function GET(_request: NextRequest, { params }: Params) {
-  const subOrders = getSubOrdersByPublicToken(params.publicToken);
+  const subOrders = await getSubOrdersByPublicToken(params.publicToken);
   if (subOrders.length === 0) {
     return NextResponse.json({ error: "Order not found." }, { status: 404 });
   }
 
+  // One query for the stalls involved, not one per sub-order.
+  const stallIds = [...new Set(subOrders.map((s) => s.stallId))];
+  const stalls = new Map(
+    (await Promise.all(stallIds.map((id) => getStall(id)))).flatMap((s) => (s ? [[s.id, s] as const] : [])),
+  );
+
   const enriched = subOrders.map((sub) => {
-    const stall = getStall(sub.stallId);
+    const stall = stalls.get(sub.stallId);
     const { guestPhone: _guestPhone, ...safe } = sub;
     return {
       ...safe,

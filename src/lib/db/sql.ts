@@ -23,7 +23,13 @@ import postgres from "postgres";
 
 const connectionString = process.env.DATABASE_URL;
 
-if (!connectionString && process.env.NODE_ENV === "production") {
+// `next build` imports every route module to collect its metadata, without
+// ever running a query. Throwing at import time therefore broke the build on
+// any machine that didn't happen to have production credentials — CI included.
+// The check still fires on a real server start.
+const isBuildPhase = process.env.NEXT_PHASE === "phase-production-build";
+
+if (!connectionString && process.env.NODE_ENV === "production" && !isBuildPhase) {
   throw new Error(
     "DATABASE_URL is not set. Point it at the Supabase pooled connection string (port 6543).",
   );
@@ -34,6 +40,10 @@ const isServerless = Boolean(process.env.NETLIFY || process.env.VERCEL || proces
 
 function createClient() {
   return postgres(connectionString ?? "", {
+    // snake_case in the database, camelCase in TypeScript, mapped both ways
+    // automatically. This is what lets `select *` land straight on the domain
+    // types in src/lib/types.ts with no hand-written mapper per table.
+    transform: postgres.camel,
     max: isServerless ? 1 : 10,
     idle_timeout: 20,
     connect_timeout: 10,
@@ -57,6 +67,27 @@ function createClient() {
 const globalForSql = globalThis as unknown as { __skCanteenSql?: ReturnType<typeof createClient> };
 
 export const sql = globalForSql.__skCanteenSql ?? (globalForSql.__skCanteenSql = createClient());
+
+/**
+ * The client, or a transaction handle standing in for it.
+ *
+ * Repository functions take this so the same function works standalone and
+ * inside a transaction — which is what stops, say, a token number being
+ * allocated on a separate connection and surviving a rolled-back order.
+ */
+export type Db = typeof sql | postgres.TransactionSql<{ date: string }>;
+
+/**
+ * Hands a plain object to postgres.js for an INSERT or UPDATE fragment.
+ *
+ * `sql(obj)` builds `col = value, …` from the object's keys — with
+ * transform.camel above, `basePrice` becomes `base_price` on the way in. Its
+ * published types want a narrower shape than our domain types express, so the
+ * cast lives here once instead of at every call site.
+ */
+export function fields<T extends object>(value: T) {
+  return value as unknown as Record<string, never>;
+}
 
 /** True when the app has somewhere to store data. Used by the health check. */
 export function isConfigured(): boolean {

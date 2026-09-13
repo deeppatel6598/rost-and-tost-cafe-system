@@ -1,6 +1,6 @@
 import { generateId } from "@/lib/format";
 import { normalisePhone } from "@/lib/phone";
-import { db } from "@/lib/store/db";
+import { sql, type Db } from "@/lib/db/sql";
 import type { Visit, VisitCloseReason } from "@/lib/types";
 
 /**
@@ -23,46 +23,51 @@ import type { Visit, VisitCloseReason } from "@/lib/types";
 /** Matches the session cookie's TTL: a visit lasts a meal, not a day. */
 export const VISIT_WINDOW_MS = 4 * 60 * 60 * 1000;
 
+/** SQL fragment for "still current", used by every lookup below. */
+const CURRENT = sql`closed_at is null and last_activity_at > now() - interval '4 hours'`;
+
 export function isCurrent(visit: Visit | undefined, now = Date.now()): visit is Visit {
   if (!visit) return false;
   if (visit.closedAt) return false;
   return now - new Date(visit.lastActivityAt).getTime() < VISIT_WINDOW_MS;
 }
 
-export function getVisit(id: string | undefined): Visit | undefined {
+export async function getVisit(id: string | undefined, tx: Db = sql): Promise<Visit | undefined> {
   if (!id) return undefined;
-  return db.visits.find((v) => v.id === id);
+  const [row] = await tx<Visit[]>`select * from visits where id = ${id}`;
+  return row;
 }
 
 /** The cookie's visit, but only if it is still usable for this table. */
-export function getCurrentVisitForTable(visitId: string | undefined, tableId: string): Visit | undefined {
-  const visit = getVisit(visitId);
-  if (!isCurrent(visit)) return undefined;
-  return visit.tableId === tableId ? visit : undefined;
+export async function getCurrentVisitForTable(
+  visitId: string | undefined,
+  tableId: string,
+): Promise<Visit | undefined> {
+  if (!visitId) return undefined;
+  const [row] = await sql<Visit[]>`
+    select * from visits
+    where id = ${visitId} and table_id = ${tableId} and ${CURRENT}
+  `;
+  return row;
 }
 
-export function openVisit(tableId: string): Visit {
-  const now = new Date().toISOString();
-  const visit: Visit = {
-    id: generateId("visit"),
-    tableId,
-    openedAt: now,
-    lastActivityAt: now,
-  };
-  db.visits.push(visit);
-  return visit;
+export async function openVisit(tableId: string, tx: Db = sql): Promise<Visit> {
+  const [row] = await tx<Visit[]>`
+    insert into visits (id, table_id) values (${generateId("visit")}, ${tableId})
+    returning *
+  `;
+  return row;
 }
 
-export function touchVisit(id: string): void {
-  const visit = getVisit(id);
-  if (visit && !visit.closedAt) visit.lastActivityAt = new Date().toISOString();
+export async function touchVisit(id: string, tx: Db = sql): Promise<void> {
+  await tx`update visits set last_activity_at = now() where id = ${id} and closed_at is null`;
 }
 
-export function endVisit(id: string, reason: VisitCloseReason): void {
-  const visit = getVisit(id);
-  if (!visit || visit.closedAt) return;
-  visit.closedAt = new Date().toISOString();
-  visit.closedReason = reason;
+export async function endVisit(id: string, reason: VisitCloseReason, tx: Db = sql): Promise<void> {
+  await tx`
+    update visits set closed_at = now(), closed_reason = ${reason}
+    where id = ${id} and closed_at is null
+  `;
 }
 
 /**
@@ -75,48 +80,70 @@ export function endVisit(id: string, reason: VisitCloseReason): void {
  * query spans tables, two visits with one number are already one person and
  * nothing ever has to be merged.
  */
-export function currentVisitsByPhone(phone: string): Visit[] {
+export async function currentVisitsByPhone(phone: string): Promise<Visit[]> {
   const wanted = normalisePhone(phone);
   if (!wanted) return [];
-  const now = Date.now();
-  return db.visits
-    .filter((v) => v.guestPhone === wanted && isCurrent(v, now))
-    .sort((a, b) => (a.lastActivityAt < b.lastActivityAt ? 1 : -1));
+  return sql<Visit[]>`
+    select * from visits
+    where guest_phone = ${wanted} and ${CURRENT}
+    order by last_activity_at desc
+  `;
 }
 
 /** Manual recovery is deliberately narrower: this table only. */
-export function findCurrentVisitAtTable(tableId: string, phone: string): Visit | undefined {
-  return currentVisitsByPhone(phone).find((v) => v.tableId === tableId);
+export async function findCurrentVisitAtTable(
+  tableId: string,
+  phone: string,
+): Promise<Visit | undefined> {
+  const wanted = normalisePhone(phone);
+  if (!wanted) return undefined;
+  const [row] = await sql<Visit[]>`
+    select * from visits
+    where guest_phone = ${wanted} and table_id = ${tableId} and ${CURRENT}
+    order by last_activity_at desc
+    limit 1
+  `;
+  return row;
 }
 
 /**
  * Decides which visit an order belongs to, given the number at checkout.
  *
  * Every stamp/supersede decision lives here so there is exactly one place to
- * read when asking "why did this order land on that visit?".
+ * read when asking "why did this order land on that visit?". Runs inside the
+ * order's transaction, so superseding a sitting and writing the order either
+ * both happen or neither does.
  */
-export function claimVisit(visitId: string, phone: string): Visit {
+export async function claimVisit(visitId: string, phone: string, tx: Db = sql): Promise<Visit> {
   const wanted = normalisePhone(phone);
-  const visit = getVisit(visitId);
+  const visit = await getVisit(visitId, tx);
   if (!visit) throw new Error(`claimVisit: unknown visit ${visitId}`);
 
   // First checkout of this sitting — the number claims it.
   if (!visit.guestPhone) {
-    visit.guestPhone = wanted;
-    visit.lastActivityAt = new Date().toISOString();
-    return visit;
+    const [row] = await tx<Visit[]>`
+      update visits set guest_phone = ${wanted}, last_activity_at = now()
+      where id = ${visit.id}
+      returning *
+    `;
+    return row;
   }
 
   if (visit.guestPhone === wanted) {
-    visit.lastActivityAt = new Date().toISOString();
-    return visit;
+    const [row] = await tx<Visit[]>`
+      update visits set last_activity_at = now() where id = ${visit.id} returning *
+    `;
+    return row;
   }
 
   // A different number on the same device is a different guest. Retire this
   // sitting and start a fresh one, so the previous person's orders drop out of
   // the list the moment someone else orders.
-  endVisit(visit.id, "superseded");
-  const next = openVisit(visit.tableId);
-  next.guestPhone = wanted;
-  return next;
+  await endVisit(visit.id, "superseded", tx);
+  const [row] = await tx<Visit[]>`
+    insert into visits (id, table_id, guest_phone)
+    values (${generateId("visit")}, ${visit.tableId}, ${wanted})
+    returning *
+  `;
+  return row;
 }

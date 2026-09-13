@@ -13,5 +13,5 @@ export async function GET(request: NextRequest) {
   const scope = await requireStallScope(request.nextUrl.searchParams.get("stallId"));
   if (!scope.ok) return scope.response;
 
-  return NextResponse.json({ orders: listSubOrdersForStall(scope.stallId) });
+  return NextResponse.json({ orders: await listSubOrdersForStall(scope.stallId) });
 }

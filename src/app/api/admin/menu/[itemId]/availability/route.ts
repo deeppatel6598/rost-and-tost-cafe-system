@@ -28,11 +28,11 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "isAvailable is required." }, { status: 400 });
   }
 
-  const existing = getItem(params.itemId);
+  const existing = await getItem(params.itemId);
   if (!existing || existing.stallId !== scope.stallId) {
     return NextResponse.json({ error: "Item not found." }, { status: 404 });
   }
 
-  const item = setItemAvailability(scope.stallId, params.itemId, body.isAvailable);
+  const item = await setItemAvailability(scope.stallId, params.itemId, body.isAvailable);
   return NextResponse.json({ item });
 }

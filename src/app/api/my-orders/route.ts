@@ -21,5 +21,5 @@ export async function GET() {
   if (!scope.ok) return scope.response;
 
   const visitId = await resolveVisitId(scope.session);
-  return NextResponse.json({ subOrders: listOrdersForSession(visitId) });
+  return NextResponse.json({ subOrders: await listOrdersForSession(visitId) });
 }

@@ -13,7 +13,7 @@ export async function GET(request: NextRequest) {
   const scope = await requireStallScope(request.nextUrl.searchParams.get("stallId"));
   if (!scope.ok) return scope.response;
 
-  const stall = getStall(scope.stallId);
+  const stall = await getStall(scope.stallId);
   if (!stall) return NextResponse.json({ error: "Stall not found." }, { status: 404 });
   return NextResponse.json({ stall: toStallView(stall) });
 }
@@ -29,7 +29,7 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  const before = getStall(scope.stallId);
+  const before = await getStall(scope.stallId);
   if (!before) return NextResponse.json({ error: "Stall not found." }, { status: 404 });
 
   // Changing the UPI VPA redirects where every future rupee lands, so it is
@@ -49,7 +49,7 @@ export async function PATCH(request: NextRequest) {
     }
   }
 
-  const stall = updateStall(scope.stallId, {
+  const stall = await updateStall(scope.stallId, {
     serviceMode: SERVICE_MODES.includes(body.serviceMode) ? body.serviceMode : undefined,
     isPaused: typeof body.isPaused === "boolean" ? body.isPaused : undefined,
     opensAt: typeof body.opensAt === "string" ? body.opensAt : undefined,
@@ -63,7 +63,7 @@ export async function PATCH(request: NextRequest) {
   if (!stall) return NextResponse.json({ error: "Stall not found." }, { status: 404 });
 
   if (changingPayout) {
-    recordAudit({
+    await recordAudit({
       actorId: scope.session.staffId,
       actorName: scope.session.name,
       action: "stall.payout_changed",

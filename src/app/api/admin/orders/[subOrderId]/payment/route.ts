@@ -34,18 +34,18 @@ export async function POST(request: NextRequest, { params }: Params) {
     return NextResponse.json({ error: "Unsupported payment status." }, { status: 400 });
   }
 
-  const before = getSubOrderForStall(scope.stallId, params.subOrderId);
+  const before = await getSubOrderForStall(scope.stallId, params.subOrderId);
   if (!before) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
   try {
-    const subOrder = setPaymentStatus(
+    const subOrder = await setPaymentStatus(
       scope.stallId,
       params.subOrderId,
       body.paymentStatus,
       scope.session.staffId,
     );
 
-    recordAudit({
+    await recordAudit({
       actorId: scope.session.staffId,
       actorName: scope.session.name,
       action: `payment.${body.paymentStatus.toLowerCase()}`,

@@ -14,7 +14,7 @@ export const dynamic = "force-dynamic";
  */
 export async function POST() {
   const session = await getTableSession();
-  if (session?.visitId) endVisit(session.visitId, "guest_ended");
+  if (session?.visitId) await endVisit(session.visitId, "guest_ended");
   clearTableSessionCookie();
   return NextResponse.json({ ended: true });
 }

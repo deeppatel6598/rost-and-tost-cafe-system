@@ -9,7 +9,7 @@ export default async function AdminDashboardLayout({ children }: { children: Rea
   const session = await getStaffSession();
   if (!session) redirect("/admin/login");
 
-  const stall = session.stallId ? getStall(session.stallId) : null;
+  const stall = session.stallId ? await getStall(session.stallId) : null;
 
   return (
     // Staff see their own stall's colour on their own board, which is also

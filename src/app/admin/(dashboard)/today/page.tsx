@@ -12,13 +12,13 @@ export default async function TodayPage() {
   if (!session) redirect("/admin/login");
   if (session.role === "super_admin" || !session.stallId) redirect("/admin/super");
 
-  const stall = getStall(session.stallId);
+  const stall = await getStall(session.stallId);
 
   return (
     <TodayView
       title={stall?.name ?? "Today"}
-      stats={todayStats(session.stallId)}
-      problems={listProblemOrders(session.stallId)}
+      stats={await todayStats(session.stallId)}
+      problems={await listProblemOrders(session.stallId)}
     />
   );
 }

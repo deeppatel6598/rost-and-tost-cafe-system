@@ -6,7 +6,7 @@ export async function GET() {
   const session = await getStaffSession();
   if (!session) return NextResponse.json({ authenticated: false }, { status: 401 });
 
-  const stall = session.stallId ? getStall(session.stallId) : null;
+  const stall = session.stallId ? await getStall(session.stallId) : null;
   return NextResponse.json({
     authenticated: true,
     staff: {

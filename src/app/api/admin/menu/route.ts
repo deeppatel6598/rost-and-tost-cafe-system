@@ -11,8 +11,8 @@ export async function GET(request: NextRequest) {
   if (!scope.ok) return scope.response;
 
   return NextResponse.json({
-    categories: listCategories(scope.stallId),
-    items: listStallMenu(scope.stallId),
+    categories: await listCategories(scope.stallId),
+    items: await listStallMenu(scope.stallId),
   });
 }
 
@@ -36,12 +36,13 @@ export async function POST(request: NextRequest) {
 
   // The category must belong to this stall — otherwise an item could be filed
   // under a competitor's menu.
-  if (!listCategories(scope.stallId).some((c) => c.id === body.categoryId)) {
+  const categories = await listCategories(scope.stallId);
+  if (!categories.some((c) => c.id === body.categoryId)) {
     return NextResponse.json({ error: "Unknown category." }, { status: 400 });
   }
 
-  const existing = listStallMenu(scope.stallId);
-  const item = createItem({
+  const existing = await listStallMenu(scope.stallId);
+  const item = await createItem({
     stallId: scope.stallId,
     categoryId: body.categoryId,
     name: String(body.name).trim().slice(0, 80),
@@ -54,10 +55,10 @@ export async function POST(request: NextRequest) {
     sortOrder: existing.length,
   });
 
-  if (Array.isArray(body.variants)) replaceItemVariants(item.id, body.variants);
-  if (Array.isArray(body.addonGroups)) replaceItemAddonGroups(item.id, body.addonGroups);
+  if (Array.isArray(body.variants)) await replaceItemVariants(item.id, body.variants);
+  if (Array.isArray(body.addonGroups)) await replaceItemAddonGroups(item.id, body.addonGroups);
 
-  recordAudit({
+  await recordAudit({
     actorId: scope.session.staffId,
     actorName: scope.session.name,
     action: "menu.item_created",

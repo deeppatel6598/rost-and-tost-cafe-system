@@ -12,18 +12,21 @@ export default async function SuperAdminPage() {
   if (!session) redirect("/admin/login");
   if (session.role !== "super_admin") redirect("/admin");
 
-  const stalls = listStallViews();
+  const stalls = await listStallViews();
 
-  return (
-    <SuperAdminView
-      canteen={todayStats(null)}
-      problems={listProblemOrders(null)}
-      stalls={stalls.map((stall) => ({
+  // Four stalls' day summaries in parallel rather than one after another.
+  const [canteen, problems, perStall] = await Promise.all([
+    todayStats(null),
+    listProblemOrders(null),
+    Promise.all(
+      stalls.map(async (stall) => ({
         id: stall.id,
         name: stall.name,
         availability: stall.availability,
-        stats: todayStats(stall.id),
-      }))}
-    />
-  );
+        stats: await todayStats(stall.id),
+      })),
+    ),
+  ]);
+
+  return <SuperAdminView canteen={canteen} problems={problems} stalls={perStall} />;
 }

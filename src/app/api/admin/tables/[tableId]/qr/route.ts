@@ -29,7 +29,7 @@ export async function GET(request: NextRequest, { params }: Params) {
   const session = await getStaffSession();
   if (!session) return NextResponse.json({ error: "Not signed in." }, { status: 401 });
 
-  const table = getTableById(params.tableId);
+  const table = await getTableById(params.tableId);
   if (!table) return NextResponse.json({ error: "Table not found." }, { status: 404 });
 
   const png = await generateTableQrPng(table, getRequestOrigin(request));

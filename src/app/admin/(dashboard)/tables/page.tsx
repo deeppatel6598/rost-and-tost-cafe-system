@@ -4,8 +4,8 @@ import { listTables } from "@/lib/store/tables";
 export const dynamic = "force-dynamic";
 export const metadata = { title: "Table QR codes" };
 
-export default function TablesPage() {
-  const tables = listTables();
+export default async function TablesPage() {
+  const tables = await listTables();
   const siteUrl = getSiteUrl();
 
   return (

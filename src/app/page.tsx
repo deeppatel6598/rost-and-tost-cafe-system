@@ -11,8 +11,8 @@ const STEPS = [
   { n: "03", title: "Pay your way", body: "UPI from your phone, or cash at that stall's counter when you collect." },
 ];
 
-export default function HomePage() {
-  const stalls = listStallViews();
+export default async function HomePage() {
+  const stalls = await listStallViews();
 
   return (
     <div data-surface="roast" className="min-h-screen bg-roast-950 text-on-dark">

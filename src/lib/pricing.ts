@@ -1,5 +1,28 @@
-import { db } from "@/lib/store/db";
-import type { AddonSnapshot, CartLineInput, Stall } from "@/lib/types";
+import type {
+  AddonSnapshot,
+  CartLineInput,
+  ItemAddon,
+  ItemAddonGroup,
+  ItemVariant,
+  MenuItem,
+  Stall,
+} from "@/lib/types";
+
+/**
+ * Everything priceCart needs, read once and passed in.
+ *
+ * Pricing used to reach into the store itself. It takes a snapshot now because
+ * the order transaction loads these rows under a lock and then prices against
+ * exactly those rows — if pricing went back to the database separately, a
+ * sold-out toggle could land between the two reads and the cart would be
+ * priced from stock that no longer exists.
+ */
+export interface Catalogue {
+  items: Map<string, MenuItem>;
+  variantsByItem: Map<string, ItemVariant[]>;
+  groupsByItem: Map<string, ItemAddonGroup[]>;
+  addons: Map<string, ItemAddon>;
+}
 
 /**
  * Server-side pricing.
@@ -58,14 +81,14 @@ export interface PricedCart {
  * group rules as it goes. Throws PricingError on anything that doesn't add
  * up, so a caller can surface a specific message rather than a generic 400.
  */
-export function priceCart(stall: Stall, lines: CartLineInput[]): PricedCart {
+export function priceCart(stall: Stall, lines: CartLineInput[], catalogue: Catalogue): PricedCart {
   if (!Array.isArray(lines) || lines.length === 0) {
     throw new PricingError("Your cart is empty.", "empty_cart");
   }
 
   const priced: PricedLine[] = lines.map((line) => {
-    const item = db.items.find((i) => i.id === line.itemId && i.isActive);
-    if (!item) {
+    const item = catalogue.items.get(line.itemId);
+    if (!item || !item.isActive) {
       throw new PricingError("One of the items is no longer on the menu.", "unknown_item");
     }
     // A cart belongs to exactly one stall. Reject cross-stall lines outright
@@ -84,7 +107,7 @@ export function priceCart(stall: Stall, lines: CartLineInput[]): PricedCart {
     let unitPrice = item.basePrice;
     let variantNameSnapshot: string | undefined;
 
-    const variantsForItem = db.variants.filter((v) => v.itemId === item.id);
+    const variantsForItem = catalogue.variantsByItem.get(item.id) ?? [];
     if (line.variantId) {
       const variant = variantsForItem.find((v) => v.id === line.variantId);
       if (!variant) {
@@ -101,11 +124,11 @@ export function priceCart(stall: Stall, lines: CartLineInput[]): PricedCart {
 
     const addonIds = Array.isArray(line.addonIds) ? line.addonIds : [];
     const addonsSnapshot: AddonSnapshot[] = [];
-    const groupsForItem = db.addonGroups.filter((g) => g.itemId === item.id);
+    const groupsForItem = catalogue.groupsByItem.get(item.id) ?? [];
     const countByGroup = new Map<string, number>();
 
     for (const addonId of addonIds) {
-      const addon = db.addons.find((a) => a.id === addonId);
+      const addon = catalogue.addons.get(addonId);
       const group = addon ? groupsForItem.find((g) => g.id === addon.groupId) : undefined;
       if (!addon || !group) {
         throw new PricingError(`Invalid choice for ${item.name}.`, "unknown_addon");

@@ -49,10 +49,10 @@ export function clearTableSessionCookie(): void {
  * fresh sitting rather than an error.
  */
 export async function resolveVisitId(session: TableSession): Promise<string> {
-  const existing = getCurrentVisitForTable(session.visitId, session.tableId);
+  const existing = await getCurrentVisitForTable(session.visitId, session.tableId);
   if (existing) return existing.id;
 
-  const visit = openVisit(session.tableId);
+  const visit = await openVisit(session.tableId);
   await setTableSessionCookie({ ...session, visitId: visit.id });
   return visit.id;
 }

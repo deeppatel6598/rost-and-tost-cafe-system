@@ -10,7 +10,7 @@ export async function GET(request: NextRequest) {
   if (!scope.ok) return scope.response;
 
   return NextResponse.json({
-    stats: todayStats(scope.stallId),
-    problems: listProblemOrders(scope.stallId),
+    stats: await todayStats(scope.stallId),
+    problems: await listProblemOrders(scope.stallId),
   });
 }

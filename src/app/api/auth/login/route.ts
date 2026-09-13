@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Phone number and password are required." }, { status: 400 });
   }
 
-  const staff = authenticate(phone, password);
+  const staff = await authenticate(phone, password);
   if (!staff) {
     // Same message either way — do not reveal which phone numbers are staff.
     return NextResponse.json({ error: "Incorrect phone number or password." }, { status: 401 });

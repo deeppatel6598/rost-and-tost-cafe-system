@@ -26,16 +26,16 @@ interface Params {
  * until the first checkout stamps a phone number on it.
  */
 export async function GET(request: NextRequest, { params }: Params) {
-  const table = resolveTableByToken(params.qrToken);
+  const table = await resolveTableByToken(params.qrToken);
 
   if (!table) {
     return NextResponse.redirect(new URL("/table-not-found", request.url));
   }
 
   const existing = await getTableSession();
-  const rejoined = getCurrentVisitForTable(existing?.visitId, table.id);
-  if (rejoined) touchVisit(rejoined.id);
-  const visit = rejoined ?? openVisit(table.id);
+  const rejoined = await getCurrentVisitForTable(existing?.visitId, table.id);
+  if (rejoined) await touchVisit(rejoined.id);
+  const visit = rejoined ?? await openVisit(table.id);
 
   const token = await createTableToken({
     tableId: table.id,

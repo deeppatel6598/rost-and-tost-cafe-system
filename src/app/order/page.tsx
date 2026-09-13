@@ -11,7 +11,7 @@ export default async function StallSelectionPage() {
   // No table session means they didn't come through a QR code.
   if (!session) redirect("/scan");
 
-  const stalls = listStallViews();
+  const stalls = await listStallViews();
 
   return (
     <StallPicker

@@ -14,7 +14,7 @@ export default async function CheckoutPage({ params }: Params) {
   const session = await getTableSession();
   if (!session) redirect("/scan");
 
-  const stall = getStall(params.stallId);
+  const stall = await getStall(params.stallId);
   if (!stall) notFound();
 
   return <CheckoutClient tableNumber={session.tableNumber} stall={toStallView(stall)} />;

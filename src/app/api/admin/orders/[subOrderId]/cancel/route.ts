@@ -29,13 +29,13 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
   const fullReason = body.note?.trim() ? `${reason} — ${body.note.trim().slice(0, 120)}` : reason;
 
-  const before = getSubOrderForStall(scope.stallId, params.subOrderId);
+  const before = await getSubOrderForStall(scope.stallId, params.subOrderId);
   if (!before) return NextResponse.json({ error: "Order not found." }, { status: 404 });
 
   try {
-    const subOrder = cancelByStall(scope.stallId, params.subOrderId, fullReason);
+    const subOrder = await cancelByStall(scope.stallId, params.subOrderId, fullReason);
 
-    recordAudit({
+    await recordAudit({
       actorId: scope.session.staffId,
       actorName: scope.session.name,
       action: "order.cancelled_by_stall",

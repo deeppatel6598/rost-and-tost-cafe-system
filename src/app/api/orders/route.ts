@@ -94,7 +94,7 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { subOrder, replayed, visitId: landedOn } = createOrder({
+    const { subOrder, replayed, visitId: landedOn } = await createOrder({
       tableId: session.tableId,
       visitId,
       stallId: body.stallId,
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest) {
       await setTableSessionCookie({ ...session, visitId: landedOn });
     }
 
-    const stall = getStall(subOrder.stallId);
+    const stall = await getStall(subOrder.stallId);
     const upiLink =
       subOrder.paymentMethod === "upi" && stall
         ? buildUpiLink(stall, subOrder.total, subOrder.tokenNumber)

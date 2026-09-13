@@ -25,7 +25,7 @@ export async function POST(request: NextRequest, { params }: Params) {
   }
 
   try {
-    const subOrder = markUpiClaimed(
+    const subOrder = await markUpiClaimed(
       params.publicToken,
       params.subOrderId,
       body.reference?.trim() || undefined,

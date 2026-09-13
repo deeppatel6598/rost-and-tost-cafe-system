@@ -1,5 +1,5 @@
 import { generateId } from "@/lib/format";
-import { db } from "@/lib/store/db";
+import { sql } from "@/lib/db/sql";
 import type { AuditLog } from "@/lib/types";
 
 /**
@@ -7,7 +7,7 @@ import type { AuditLog } from "@/lib/types";
  * every money-touching action is recorded: payment confirmations, refunds,
  * cancellations, price changes and UPI VPA changes.
  */
-export function recordAudit(entry: {
+export async function recordAudit(entry: {
   actorId: string;
   actorName: string;
   action: string;
@@ -15,26 +15,27 @@ export function recordAudit(entry: {
   entityId: string;
   before?: unknown;
   after?: unknown;
-}): AuditLog {
-  const log: AuditLog = {
-    id: generateId("audit"),
-    actorId: entry.actorId,
-    actorName: entry.actorName,
-    action: entry.action,
-    entityType: entry.entityType,
-    entityId: entry.entityId,
-    beforeJson: entry.before ?? null,
-    afterJson: entry.after ?? null,
-    createdAt: new Date().toISOString(),
-  };
-  db.auditLogs.push(log);
-  return log;
+}): Promise<AuditLog> {
+  const [row] = await sql<AuditLog[]>`
+    insert into audit_logs (id, actor_id, actor_name, action, entity_type, entity_id, before_json, after_json)
+    values (
+      ${generateId("audit")}, ${entry.actorId}, ${entry.actorName}, ${entry.action},
+      ${entry.entityType}, ${entry.entityId},
+      ${sql.json((entry.before ?? null) as never)}, ${sql.json((entry.after ?? null) as never)}
+    )
+    returning *
+  `;
+  return row;
 }
 
-export function listAudit(limit = 200): AuditLog[] {
-  return [...db.auditLogs].reverse().slice(0, limit);
+export async function listAudit(limit = 200): Promise<AuditLog[]> {
+  return sql<AuditLog[]>`select * from audit_logs order by created_at desc limit ${limit}`;
 }
 
-export function listAuditForEntity(entityType: string, entityId: string): AuditLog[] {
-  return db.auditLogs.filter((l) => l.entityType === entityType && l.entityId === entityId).reverse();
+export async function listAuditForEntity(entityType: string, entityId: string): Promise<AuditLog[]> {
+  return sql<AuditLog[]>`
+    select * from audit_logs
+    where entity_type = ${entityType} and entity_id = ${entityId}
+    order by created_at desc
+  `;
 }

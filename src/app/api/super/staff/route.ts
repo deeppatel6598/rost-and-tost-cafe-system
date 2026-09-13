@@ -3,7 +3,7 @@ import { requireSuperAdmin } from "@/lib/api-auth";
 import { maskPhone } from "@/lib/format";
 import { recordAudit } from "@/lib/store/audit";
 import { createStaff, listStaff } from "@/lib/store/staff";
-import { getStall } from "@/lib/store/stalls";
+import { getStall, listStalls } from "@/lib/store/stalls";
 import type { StaffRole } from "@/lib/types";
 
 export const dynamic = "force-dynamic";
@@ -16,14 +16,18 @@ export async function GET() {
 
   // Never return password hashes, and mask the phone number — the supervisor
   // manages accounts, they don't need everyone's contact details in a list.
+  // Stall names come from one query rather than one per staff row.
+  const [staff, stalls] = await Promise.all([listStaff(), listStalls()]);
+  const stallNames = new Map(stalls.map((s) => [s.id, s.name]));
+
   return NextResponse.json({
-    staff: listStaff().map((s) => ({
+    staff: staff.map((s) => ({
       id: s.id,
       name: s.name,
       phoneMasked: maskPhone(s.phone),
       role: s.role,
       stallId: s.stallId,
-      stallName: s.stallId ? getStall(s.stallId)?.name ?? null : null,
+      stallName: s.stallId ? stallNames.get(s.stallId) ?? null : null,
       isActive: s.isActive,
     })),
   });
@@ -49,12 +53,12 @@ export async function POST(request: NextRequest) {
   if (password.length < 8) {
     return NextResponse.json({ error: "Password must be at least 8 characters." }, { status: 400 });
   }
-  if (role !== "super_admin" && !getStall(body.stallId)) {
+  if (role !== "super_admin" && !await getStall(body.stallId)) {
     return NextResponse.json({ error: "Choose which stall this account belongs to." }, { status: 400 });
   }
 
   try {
-    const staff = createStaff({
+    const staff = await createStaff({
       name: String(body.name).trim().slice(0, 60),
       phone,
       password,
@@ -62,7 +66,7 @@ export async function POST(request: NextRequest) {
       stallId: role === "super_admin" ? null : body.stallId,
     });
 
-    recordAudit({
+    await recordAudit({
       actorId: scope.session.staffId,
       actorName: scope.session.name,
       action: "staff.created",

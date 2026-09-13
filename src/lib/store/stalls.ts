@@ -1,4 +1,4 @@
-import { db } from "@/lib/store/db";
+import { fields, sql, type Db } from "@/lib/db/sql";
 import { definedOnly } from "@/lib/store/patch";
 import type { Stall, StallAvailability, StallView } from "@/lib/types";
 
@@ -96,32 +96,49 @@ export function toStallView(stall: Stall, now?: Date): StallView {
   return { ...stall, availability: getAvailability(stall, now) };
 }
 
-export function listStalls(): Stall[] {
-  return [...db.stalls].sort((a, b) => a.sortOrder - b.sortOrder);
+export async function listStalls(): Promise<Stall[]> {
+  return sql<Stall[]>`select * from stalls order by sort_order`;
 }
 
-export function listStallViews(now?: Date): StallView[] {
-  return listStalls().map((s) => toStallView(s, now));
+export async function listStallViews(now?: Date): Promise<StallView[]> {
+  const stalls = await listStalls();
+  return stalls.map((s) => toStallView(s, now));
 }
 
-export function getStall(id: string): Stall | undefined {
-  return db.stalls.find((s) => s.id === id);
+export async function getStall(id: string): Promise<Stall | undefined> {
+  const [row] = await sql<Stall[]>`select * from stalls where id = ${id}`;
+  return row;
 }
 
-export function updateStall(id: string, patch: Partial<Stall>): Stall | undefined {
-  const idx = db.stalls.findIndex((s) => s.id === id);
-  if (idx === -1) return undefined;
+export async function updateStall(id: string, patch: Partial<Stall>): Promise<Stall | undefined> {
   // id and tokenSeq are never client-settable. definedOnly keeps a partial
-  // patch from blanking fields the caller simply didn't mention.
-  const { id: _ignoredId, tokenSeq: _ignoredSeq, ...safe } = patch;
-  db.stalls[idx] = { ...db.stalls[idx], ...definedOnly(safe) };
-  return db.stalls[idx];
+  // patch from blanking fields the caller simply didn't mention — spreading
+  // an explicit `undefined` over a stored row is how toggling "accept cash"
+  // once wiped a stall's opening hours.
+  const { id: _ignoredId, tokenSeq: _ignoredSeq, ...rest } = patch;
+  const safe = definedOnly(rest);
+  if (Object.keys(safe).length === 0) return getStall(id);
+
+  const [row] = await sql<Stall[]>`
+    update stalls set ${sql(fields(safe))} where id = ${id} returning *
+  `;
+  return row;
 }
 
-/** Allocates the next called-out token for a stall, e.g. LP-042. */
-export function nextTokenNumber(stallId: string): string {
-  const stall = db.stalls.find((s) => s.id === stallId);
-  if (!stall) throw new Error(`Unknown stall: ${stallId}`);
-  stall.tokenSeq += 1;
-  return `${stall.tokenPrefix}-${String(stall.tokenSeq).padStart(3, "0")}`;
+/**
+ * Allocates the next called-out token for a stall, e.g. LP-042.
+ *
+ * The increment and the read are one statement, so two students checking out
+ * at the same instant cannot be handed the same number. Pass the transaction
+ * handle when calling this inside one, or the token would be allocated on a
+ * separate connection and survive a rolled-back order.
+ */
+export async function nextTokenNumber(stallId: string, tx: Db = sql): Promise<string> {
+  const [row] = await tx<{ tokenPrefix: string; tokenSeq: number }[]>`
+    update stalls set token_seq = token_seq + 1
+    where id = ${stallId}
+    returning token_prefix, token_seq
+  `;
+  if (!row) throw new Error(`Unknown stall: ${stallId}`);
+  return `${row.tokenPrefix}-${String(row.tokenSeq).padStart(3, "0")}`;
 }
